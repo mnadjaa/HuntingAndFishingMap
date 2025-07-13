@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "863985332860",
+    "project_id": "projekat-6aa42",
+    "storage_bucket": "projekat-6aa42.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:863985332860:android:1d8dd8deafb0f0466ecff9",
+        "android_client_info": {
+          "package_name": "rmas.proj.projekat"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCMhjz_lN2mjsricjH8bq5haP6a37qSHMM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
