@@ -37,6 +37,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
@@ -48,18 +50,23 @@ import rmas.proj.projekat.data.UserViewModel
 import java.util.UUID
 
 @Composable
-fun MainScreen() {
-    var currentScreen by remember { mutableStateOf(NavigationScreen.MAP) }
+fun MainScreen(
+    navController: NavController
+) {
+    //var currentScreen by remember { mutableStateOf(NavigationScreen.MAP) }//🤸IZBACI
     val context = LocalContext.current
     var isNavigationRailVisible by remember { mutableStateOf(false) }
+    val innerNavController = rememberNavController()//🤸
 
 
-    val pickImageLauncher = rememberLauncherForActivityResult(// da li ovo mogu da obrisem ❓❓❓❓
+//IZBACUJEM
+    /*
+    val pickImageLauncher = rememberLauncherForActivityResult(// da li ovo mogu da obrisem ❓❓❓❓CHATGPT JE REKO DA MOGU
         contract = ActivityResultContracts.GetContent(),
         onResult = { uri: Uri? ->
             // Ovde možeš dodati logiku za rezultat (izbor slike)//???‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️
         }
-    )
+    )*/
 
     Row(modifier = Modifier.fillMaxSize()) {
         // Side Navigation (Left Side)
@@ -75,15 +82,19 @@ fun MainScreen() {
                     NavigationRailItem(
                         icon = { Icon(Icons.Default.Pets, contentDescription = "Animals") },
                         label = { Text("Životinje") },
-                        selected = currentScreen == NavigationScreen.ANIMALS,
-                        onClick = { currentScreen = NavigationScreen.ANIMALS }
+                        selected = false, //UBACUJEM🤸
+                        onClick = { navController.navigate("animals") }//UBACUJEM🤸
+                        //selected = currentScreen == NavigationScreen.ANIMALS,//IZBACUJEM🤸
+                        //onClick = { currentScreen = NavigationScreen.ANIMALS }//IZBACUJEM🤸
                     )
 
                     NavigationRailItem(
                         icon = { Icon(Icons.Default.Water, contentDescription = "Fishes") },
                         label = { Text("Ribe") },
-                        selected = currentScreen == NavigationScreen.FISHES,
-                        onClick = { currentScreen = NavigationScreen.FISHES }
+                        selected = false, //UBACUJEM🤸
+                        onClick = { navController.navigate("fishes") }//UBACUJEM🤸
+                        //selected = currentScreen == NavigationScreen.FISHES,//IZBACUJEM🤸
+                        //onClick = { currentScreen = NavigationScreen.FISHES }//IZBACUJEM🤸
                     )
                 }
             }
@@ -101,6 +112,8 @@ fun MainScreen() {
                         .weight(1f)
                         .fillMaxWidth()
                 ) {
+                //iZBACUJEM CEO WHEN🤸
+                    /*
                     when (currentScreen) {
                         NavigationScreen.MAP -> MapScreen()
                         NavigationScreen.PROFILE -> UserProfileScreen()
@@ -108,7 +121,9 @@ fun MainScreen() {
                         NavigationScreen.SERVICE_CONTROL -> ServiceControlScreen(context)
                         NavigationScreen.ANIMALS -> AnimalsScreen()//(pickImageLauncher = pickImageLauncher)
                         NavigationScreen.FISHES -> FishesScreen()
-                    }
+                    }*/
+                    //ubacujem 🤸
+
                 }
 
                 // Bottom Navigation
@@ -123,44 +138,42 @@ fun MainScreen() {
                     NavigationBarItem(
                         icon = { Icon(Icons.Default.Map, contentDescription = "Map") },
                         label = {  if (!isNavigationRailVisible) Text("Mapa") },
-                        selected = currentScreen == NavigationScreen.MAP,
-                        onClick = { currentScreen = NavigationScreen.MAP }
+                        selected = true,//UBACUJEM🤸
+                        onClick = { navController.navigate("map") }//UBACUJEM🤸
+                        //selected = currentScreen == NavigationScreen.MAP,//IZBACUJEM🤸
+                        //onClick = { currentScreen = NavigationScreen.MAP }//IZBACUJEM🤸
                     )
 
                     NavigationBarItem(
                         icon = { Icon(Icons.Default.Person, contentDescription = "User Profile") },
                         label = { if (!isNavigationRailVisible) Text("Moj profil") },
-                        selected = currentScreen == NavigationScreen.PROFILE,
-                        onClick = { currentScreen = NavigationScreen.PROFILE }
+                        selected = false,//UBACUJEM🤸
+                        onClick = { navController.navigate("profile") }//UBACUJEM🤸
+                        //selected = currentScreen == NavigationScreen.PROFILE,//IZBACUJEM🤸
+                        //onClick = { currentScreen = NavigationScreen.PROFILE }//IZBACUJEM🤸
                     )
 
                     NavigationBarItem(
                         icon = { Icon(Icons.Default.People, contentDescription = "Users") },
                         label = { if (!isNavigationRailVisible) Text("Korisnici") },
-                        selected = currentScreen == NavigationScreen.USERS,
-                        onClick = { currentScreen = NavigationScreen.USERS }
+                        selected = false,//UBACUJEM🤸
+                        onClick = { navController.navigate("users") }//UBACUJEM🤸
+                        //selected = currentScreen == NavigationScreen.USERS,//IZBACUJEM🤸
+                        //onClick = { currentScreen = NavigationScreen.USERS }//IZBACUJEM🤸
                     )
 
                     NavigationBarItem(
                         icon = { Icon(Icons.Default.Settings, contentDescription = "Service Control") },
                         label = { if (!isNavigationRailVisible) Text("Servisi") },
-                        selected = currentScreen == NavigationScreen.SERVICE_CONTROL,
-                        onClick = { currentScreen = NavigationScreen.SERVICE_CONTROL }
+                        selected = false,//UBACUJEM🤸
+                        onClick = { navController.navigate("service_control") }//UBACUJEM🤸
+                        //selected = currentScreen == NavigationScreen.SERVICE_CONTROL,//IZBACUJEM🤸
+                        //onClick = { currentScreen = NavigationScreen.SERVICE_CONTROL }//IZBACUJEM🤸
                     )
                 }
             }
         }
     }
-}
-
-// Enum za razlicite screenove
-enum class NavigationScreen {
-    MAP,
-    PROFILE,
-    USERS,
-    ANIMALS,
-    FISHES,
-    SERVICE_CONTROL
 }
 
 @Composable
@@ -317,7 +330,7 @@ fun UserProfileScreen(
 
 @Composable
 fun UsersScreen() {
-    // Ovdje dodaj logiku za prikaz korisnika
+    // Ovdje dodaj logiku za prikaz svih korisnika
     Text("Ekran za korisnike")
 }
 
@@ -334,7 +347,6 @@ fun AnimalsScreen(
     val coroutineScope = rememberCoroutineScope()
 
 
-    // Create the image picker launcher inside the composable
     val pickImageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -505,7 +517,6 @@ fun FishesScreen(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
-    // Create the image picker launcher inside the composable
     val pickImageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->

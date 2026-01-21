@@ -80,10 +80,15 @@ import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import androidx.compose.foundation.layout.Row
+import androidx.compose.material.icons.filled.Menu
+import androidx.navigation.NavController
+import androidx.compose.ui.graphics.Color
+import androidx.compose.material.icons.filled.Close
 
 @SuppressLint("MissingPermission")
 @Composable
 fun MapScreen(
+    navController: NavController,//valjda mi ne treba
     viewModel: LocationViewModel = viewModel()
 ) {
     val context = LocalContext.current
@@ -96,6 +101,8 @@ fun MapScreen(
     var characterPosition = viewModel.characterPosition
     val characterMarkerState = remember { mutableStateOf(MarkerState(position = userLocation ?: LatLng(0.0, 0.0))) }
 
+    var showMain by remember { mutableStateOf(false) }
+
     //📌
     val isManuallyControlling by viewModel.isManuallyControlling.collectAsState()
 
@@ -107,7 +114,7 @@ fun MapScreen(
                     val latLng = LatLng(location.latitude, location.longitude)
                     userLocation = latLng
 
-                    // Update character position only if not manually controlling
+                    // updateuje se pozicija ako nije ukljuceno manuallycontrolling
                     if (!isManuallyControlling) {
                         viewModel.updatePosition(latLng)
                         characterMarkerState.value = MarkerState(position = latLng)
@@ -174,8 +181,6 @@ fun MapScreen(
         }
     }
 
-
-
     // Glavni UI
     Box(modifier = Modifier.fillMaxSize()) {
         if (!permissionGranted) {
@@ -229,6 +234,14 @@ fun MapScreen(
                 }
             }
 
+            FloatingActionButton(
+                onClick = { showMain = true },
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(16.dp)
+            ) {
+                Icon(Icons.Default.Menu, contentDescription = "Otvori meni")
+            }
 
             // btn za dodavanje nove lokacije
             FloatingActionButton(
@@ -271,7 +284,7 @@ fun MapScreen(
                             if (isManuallyControlling) {
                                 IconButton(
                                     onClick = {
-                                        val newPosition = LatLng(position.latitude + 0.0001, position.longitude)
+                                        val newPosition = LatLng(position.latitude + 0.0001, position.longitude)//mogu da povecam da se vise pomera 🐛
                                         viewModel.updatePosition(newPosition)
                                         characterMarkerState.value = MarkerState(position = newPosition)
                                         // Mock the user location
@@ -328,6 +341,26 @@ fun MapScreen(
         }
     }
 
+    if (showMain) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.4f))
+        ) {
+
+            MainScreen(navController = navController)
+
+            IconButton(
+                onClick = { showMain = false },
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp)
+            ) {
+                Icon(Icons.Default.Close, contentDescription = "Zatvori")
+            }
+        }
+    }
+
     // Dijalozi
     if (showAddLocationDialog) {
         AddLocationDialog(
@@ -345,7 +378,7 @@ fun MapScreen(
     selectedLocation?.let { location ->
         LocationDetailsDialog(
             location = location,
-            currentUserId = "current_user_id",//🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛ne treba mi ovo? ne mora ga menjam????
+            currentUserId = "current_user_id",//🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛ne treba ovako?ako ne radi ovako probaj da iznad locationsdialog dodas ovo val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: "guest" i onda umesto ove linije ovo:  currentUserId = currentUserId,
             context = context,
             onDismiss = { selectedLocation = null },
             onRatingAdded = { rating : Rating->
@@ -359,6 +392,7 @@ fun MapScreen(
             }
         )
     }
+
 }
 
 
