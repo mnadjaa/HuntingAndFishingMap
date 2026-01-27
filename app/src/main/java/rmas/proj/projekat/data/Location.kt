@@ -3,42 +3,46 @@ package rmas.proj.projekat.data
 import android.util.Log
 import com.google.android.gms.maps.model.LatLng
 import com.google.firebase.firestore.DocumentId
+import com.google.firebase.firestore.FieldPath
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 
 data class Location(
     @DocumentId var id: String = "",          // Ovaj ID je automatski dodeljen od strane Firestore-a
-    val name: String,
-    val description: String,
-    val type: LocationType,
-    val position: LatLng,
-    val photos: List<String>,
-    val authorId: String,
+    val name: String="",
+    val description: String="",
+    val type: LocationType=LocationType.HUNTING,//ako hocu both promeni da bude set
+    val position: LatLng= LatLng(0.0, 0.0),//    var position: GeoPoint? = null,
+    val photos: List<String> = emptyList(),
+    val authorId: String="",
     val createdAt: Long = System.currentTimeMillis(),
     val lastInteraction: Long = System.currentTimeMillis(),
-    val ratings: List<Rating> = emptyList()
+    val ratings: List<Rating> = emptyList(),
+    val animalIds: List<String> = emptyList(),
+    val fishIds: List<String> = emptyList()
 )
-
 
 class LocationRepository {
     private val db = FirebaseFirestore.getInstance()
     private val locationsCollection = db.collection("locations")
+    private val animalsCollection=db.collection("animals")
+    private val fishCollection = db.collection("fishes")
 
     suspend fun createLocation(location: Location): Result<Location> = kotlin.runCatching {
-        // Create a new document reference
         val locationDoc = locationsCollection.document()
 
         val timestamp = System.currentTimeMillis()
 
-        // Create location with the generated ID
         val locationWithId = location.copy(
             id = locationDoc.id,
-            photos = location.photos,//🆕🆕🆕🆕🆕🆕🆕🆕🆕 pre je bilo uniquePhotos,
+            photos = location.photos,
             createdAt =timestamp,// System.currentTimeMillis(),
             lastInteraction = timestamp//System.currentTimeMillis()
+            //da li treba i ovde da dodam animalids i fishids 🦋
         )
 
-        // Convert Location to HashMap for Firestore
+        // konertuje lokaciju u hashmap za firestore
         val locationData = hashMapOf(
             "id" to locationWithId.id,
             "name" to locationWithId.name,
@@ -50,6 +54,8 @@ class LocationRepository {
             ),
             "authorId" to locationWithId.authorId,
             "photos" to locationWithId.photos,
+            "animalIds" to locationWithId.animalIds,
+            "fishIds" to locationWithId.fishIds,
             "ratings" to locationWithId.ratings.map { rating ->
                 hashMapOf(
                     "userId" to rating.userId,
@@ -60,20 +66,18 @@ class LocationRepository {
             },
             "createdAt" to locationWithId.createdAt,
             "lastInteraction" to locationWithId.lastInteraction
+            //da li treba da dodam animalids i fishids🦋
         )
-
         // Save to Firestore
         locationDoc.set(locationData).await()
         locationWithId
     }
-
     suspend fun getAllLocations(): Result<List<Location>> = kotlin.runCatching {
         val snapshot = locationsCollection.get().await()
         snapshot.documents.mapNotNull { document ->
             try {
                 val data = document.data ?: return@mapNotNull null
 
-                // Extract position data
                 val positionMap = data["position"] as? Map<*, *>
                 val position = if (positionMap != null) {
                     LatLng(
@@ -84,7 +88,6 @@ class LocationRepository {
                     return@mapNotNull null
                 }
 
-                // Extract ratings
                 val ratingsData = data["ratings"] as? List<*>
                 val ratings = ratingsData?.mapNotNull { ratingData ->
                     (ratingData as? Map<*, *>)?.let { rating ->
@@ -97,6 +100,9 @@ class LocationRepository {
                     }
                 } ?: emptyList()
 
+                val animalIds = (data["animalIds"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+                val fishIds = (data["fishIds"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+
                 Location(
                     id = document.id,
                     name = data["name"] as? String ?: return@mapNotNull null,
@@ -107,7 +113,9 @@ class LocationRepository {
                     photos = (data["photos"] as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
                     ratings = ratings,
                     createdAt = data["createdAt"] as? Long ?: System.currentTimeMillis(),
-                    lastInteraction = data["lastInteraction"] as? Long ?: System.currentTimeMillis()
+                    lastInteraction = data["lastInteraction"] as? Long ?: System.currentTimeMillis(),
+                    animalIds = animalIds,
+                    fishIds = fishIds
                 )
             } catch (e: Exception) {
                 Log.e("LocationRepository", "Error parsing location document: ${document.id}", e)
@@ -115,7 +123,6 @@ class LocationRepository {
             }
         }
     }
-
     suspend fun updateLocation(location: Location): Result<Location> = kotlin.runCatching {
         val locationData = hashMapOf(
             "name" to location.name,
@@ -135,14 +142,220 @@ class LocationRepository {
                     "timestamp" to rating.timestamp
                 )
             },
-            "lastInteraction" to System.currentTimeMillis()
+            "lastInteraction" to System.currentTimeMillis(),
+            "animalIds" to location.animalIds,
+            "fishIds" to location.fishIds
         )
-
         locationsCollection.document(location.id).update(locationData as Map<String, Any>).await()
         location.copy(lastInteraction = System.currentTimeMillis())
     }
-
     suspend fun deleteLocation(locationId: String): Result<Unit> = kotlin.runCatching {
         locationsCollection.document(locationId).delete().await()
+    }
+    suspend fun getLocation(locationId: String): Result<Location> = kotlin.runCatching {
+        val document = locationsCollection.document(locationId).get().await()
+
+        if (!document.exists()) {
+            throw NoSuchElementException("Location with id $locationId not found")
+        }
+
+        val data = document.data ?: throw IllegalStateException("Location data is null")
+
+        // Extract position data
+        val positionMap = data["position"] as? Map<*, *>
+            ?: throw IllegalStateException("Position data is missing")
+        val position = LatLng(
+            positionMap["latitude"] as Double,
+            positionMap["longitude"] as Double
+        )
+
+        // Extract ratings
+        val ratingsData = data["ratings"] as? List<*>
+        val ratings = ratingsData?.mapNotNull { ratingData ->
+            (ratingData as? Map<*, *>)?.let { rating ->
+                Rating(
+                    userId = rating["userId"] as? String ?: return@mapNotNull null,
+                    score = (rating["score"] as? Double)?.toFloat() ?: return@mapNotNull null,
+                    comment = rating["comment"] as? String ?: return@mapNotNull null,
+                    timestamp = rating["timestamp"] as? Long ?: System.currentTimeMillis()
+                )
+            }
+        } ?: emptyList()
+
+        val animalIds = (data["animalIds"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+        val fishIds = (data["fishIds"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+
+        Location(
+            id = document.id,
+            name = data["name"] as? String ?: throw IllegalStateException("Name is missing"),
+            description = data["description"] as? String ?: throw IllegalStateException("Description is missing"),
+            type = LocationType.valueOf(data["type"] as? String ?: throw IllegalStateException("Type is missing")),
+            position = position,
+            authorId = data["authorId"] as? String ?: throw IllegalStateException("AuthorId is missing"),
+            photos = (data["photos"] as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
+            ratings = ratings,
+            createdAt = data["createdAt"] as? Long ?: System.currentTimeMillis(),
+            lastInteraction = data["lastInteraction"] as? Long ?: System.currentTimeMillis(),
+            animalIds = animalIds,
+            fishIds = fishIds
+        )
+    }
+    suspend fun addAnimalToLocation(locationId: String,animalId: String): Result<Unit>{
+        return try {
+            db.runBatch { batch ->
+                // Dodaj animalId u location.animalIds
+                batch.update(
+                    locationsCollection.document(locationId),
+                    "animalIds", FieldValue.arrayUnion(animalId)
+                )
+                // Dodaj locationId u animal.locationIds
+                batch.update(
+                    animalsCollection.document(animalId),
+                    "locationIds", FieldValue.arrayUnion(locationId)
+                )
+            }.await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    suspend fun addFishToLocation(locationId: String, fishId: String): Result<Unit> {
+        Log.d("ADD_FISH", "Adding fish=$fishId to location=$locationId")
+        return try {
+            db.runBatch { batch ->
+                batch.update(
+                    locationsCollection.document(locationId),
+                    "fishIds", FieldValue.arrayUnion(fishId)
+                )
+                batch.update(
+                    fishCollection.document(fishId),
+                    "locationIds", FieldValue.arrayUnion(locationId)
+                )
+            }.await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    suspend fun removeAnimalFromLocation(locationId: String, animalId: String): Result<Unit> {
+        return try {
+            db.runBatch { batch ->
+                batch.update(
+                    locationsCollection.document(locationId),
+                    "animalIds", FieldValue.arrayRemove(animalId)
+                )
+                batch.update(
+                    animalsCollection.document(animalId),
+                    "locationIds", FieldValue.arrayRemove(locationId)
+                )
+            }.await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    suspend fun removeFishFromLocation(locationId: String, fishId: String): Result<Unit> {
+        return try {
+            db.runBatch { batch ->
+                batch.update(
+                    locationsCollection.document(locationId),
+                    "fishIds", FieldValue.arrayRemove(fishId)
+                )
+                batch.update(
+                    fishCollection.document(fishId),
+                    "locationIds", FieldValue.arrayRemove(locationId)
+                )
+            }.await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    suspend fun getAnimalsForLocation(locationId: String): Result<List<Animal>> {
+        return try {
+            val snapshot = locationsCollection.document(locationId).get().await()
+            val animalIds=snapshot.get("animalIds") as? List<String> ?: emptyList()
+            if (animalIds.isEmpty()){
+                return Result.success(emptyList())
+            }
+            val animals = animalIds.chunked(10).flatMap { chunk ->
+                animalsCollection
+                    .whereIn(FieldPath.documentId(), chunk)
+                    .get()
+                    .await()
+                    .toObjects(Animal::class.java)
+            }
+            Result.success(animals)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    suspend fun getFishForLocation(locationId: String): Result<List<Fish>> {
+        return try {
+            val snapshot = locationsCollection.document(locationId)
+                .get()
+                .await()
+            val fishIds = snapshot.get("fishIds") as? List<String> ?: emptyList()
+
+            if (fishIds.isEmpty()) {
+                return Result.success(emptyList())
+            }
+            val fish = fishIds.chunked(10).flatMap { chunk ->
+                fishCollection
+                    .whereIn(FieldPath.documentId(), chunk)
+                    .get()
+                    .await()
+                    .toObjects(Fish::class.java)
+            }
+            Result.success(fish)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    //MOZDA MORAM DA PROMENIM OVE DOLE KAO OVE GORNJE 2
+    suspend fun getLocationsForAnimal(animalId: String): Result<List<Location>> {
+        return try {
+            val animal = animalsCollection.document(animalId).get().await()
+                .toObject(Animal::class.java)
+
+            if (animal?.locationIds.isNullOrEmpty()) {
+                return Result.success(emptyList())
+            }
+
+            val locations = animal!!.locationIds.chunked(10).flatMap { chunk ->
+                locationsCollection
+                    .whereIn(FieldPath.documentId(), chunk)
+                    .get()
+                    .await()
+                    .toObjects(Location::class.java)
+            }
+
+            Result.success(locations)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    suspend fun getLocationsForFish(fishId: String): Result<List<Location>> {
+        return try {
+            val fish = fishCollection.document(fishId).get().await()
+                .toObject(Fish::class.java)
+
+            if (fish?.locationIds.isNullOrEmpty()) {
+                return Result.success(emptyList())
+            }
+
+            val locations = fish!!.locationIds.chunked(10).flatMap { chunk ->
+                locationsCollection
+                    .whereIn(FieldPath.documentId(), chunk)
+                    .get()
+                    .await()
+                    .toObjects(Location::class.java)
+            }
+
+            Result.success(locations)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 }

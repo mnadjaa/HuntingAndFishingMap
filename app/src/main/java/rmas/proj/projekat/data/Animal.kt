@@ -1,183 +1,23 @@
 package rmas.proj.projekat.data
 
-import android.content.Context
 import android.net.Uri
 import android.util.Log
-import androidx.activity.ComponentActivity
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.google.firebase.firestore.DocumentId
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-import rmas.proj.projekat.uploadImageToCloudinary
-
+import rmas.proj.projekat.utils.uploadImageToCloudinary
 
 data class Animal(
     @DocumentId var id: String = "",          // Ovaj ID je automatski dodeljen od strane Firestore-a
     val name: String = "",
     val description: String = "",
     val photo: String = "",  // val photos: List<String> = emptyList<String>(),
-    val authorId: String = ""
+    val authorId: String = "",//OVO IZBACI POSTO NECE KORISNICI MOCI DA DODAJU ZIVOTINJE 🐛
+    val locationIds: List<String> = emptyList()
 )
-
-
-
-class AnimalViewModel(
-    private val animalRepository: AnimalRepository = AnimalRepository()
-) : ViewModel() {
-
-    private val _animalsData = MutableStateFlow<Map<String, Animal>>(emptyMap())
-    val animalsData: StateFlow<Map<String, Animal>> = _animalsData.asStateFlow()
-
-    private val _selectedImageUri = MutableStateFlow<Uri?>(null)
-    val selectedImageUri: StateFlow<Uri?> = _selectedImageUri.asStateFlow()
-
-    private val _isLoading = MutableStateFlow(false)
-    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
-
-    private val _error = MutableStateFlow<String?>(null)
-    val error: StateFlow<String?> = _error.asStateFlow()
-
-
-    fun updateSelectedImage(uri: Uri?) {
-        _selectedImageUri.value = uri
-    }
-
-    fun loadAnimalData(animalId: String) {
-        viewModelScope.launch {
-            _isLoading.value = true
-            _error.value = null
-
-            animalRepository.getAnimalById(animalId)
-                .onSuccess { animal ->
-                    _animalsData.value = _animalsData.value + (animalId to animal)
-                    Log.d("AnimalViewModel", "Uspešno učitana životinja: ${animal.name}")
-                }
-                .onFailure { exception ->
-                    _error.value = "Greška pri učitavanju životinje: ${exception.message}"
-                    Log.e("AnimalViewModel", "Greška pri učitavanju životinje", exception)
-                }
-
-            _isLoading.value = false
-        }
-    }
-
-    fun loadAnimalsByAuthor(authorId: String) {
-        viewModelScope.launch {
-            _isLoading.value = true
-            _error.value = null
-
-            animalRepository.getAnimalsByAuthor(authorId)
-                .onSuccess { animals ->
-                    val animalMap = animals.associateBy { it.id }
-                    _animalsData.value = _animalsData.value + animalMap
-                    Log.d("AnimalViewModel", "Uspešno učitane životinje autora: ${animals.size}")
-                }
-                .onFailure { exception ->
-                    _error.value = "Greška pri učitavanju životinja: ${exception.message}"
-                    Log.e("AnimalViewModel", "Greška pri učitavanju životinja", exception)
-                }
-
-            _isLoading.value = false
-        }
-    }
-
-    fun loadAllAnimals() {
-        viewModelScope.launch {
-            _isLoading.value = true
-            _error.value = null
-
-            animalRepository.getAllAnimals()
-                .onSuccess { animals ->
-                    val animalMap = animals.associateBy { it.id }
-                    _animalsData.value = animalMap
-                    Log.d("AnimalViewModel", "Uspešno učitane sve životinje: ${animals.size}")
-                }
-                .onFailure { exception ->
-                    _error.value = "Greška pri učitavanju životinja: ${exception.message}"
-                    Log.e("AnimalViewModel", "Greška pri učitavanju životinja", exception)
-                }
-
-            _isLoading.value = false
-        }
-    }
-
-    fun createAnimal(animal: Animal, context:Context) {//, context:Context
-        viewModelScope.launch {
-            _isLoading.value = true
-            _error.value = null
-
-            animalRepository.createAnimal(animal, context, _selectedImageUri.value)//dodala sam , context, _selectedImageUri.value
-                .onSuccess { createdAnimal ->
-                    _animalsData.value = _animalsData.value + (createdAnimal.id to createdAnimal)
-                    Log.d("AnimalViewModel", "Uspešno kreirana životinja: ${createdAnimal.id}")
-                }
-                .onFailure { exception ->
-                    _error.value = "Greška pri kreiranju životinje: ${exception.message}"
-                    Log.e("AnimalViewModel", "Greška pri kreiranju životinje", exception)
-                }
-
-            _isLoading.value = false
-        }
-    }
-
-    fun updateAnimal(animal: Animal) {
-        viewModelScope.launch {
-            _isLoading.value = true
-            _error.value = null
-
-            animalRepository.updateAnimal(animal)
-                .onSuccess { updatedAnimal ->
-                    _animalsData.value = _animalsData.value + (updatedAnimal.id to updatedAnimal)
-                    Log.d("AnimalViewModel", "Uspešno ažurirana životinja: ${updatedAnimal.id}")
-                }
-                .onFailure { exception ->
-                    _error.value = "Greška pri ažuriranju životinje: ${exception.message}"
-                    Log.e("AnimalViewModel", "Greška pri ažuriranju životinje", exception)
-                }
-
-            _isLoading.value = false
-        }
-    }
-
-    fun deleteAnimal(animalId: String) {
-        viewModelScope.launch {
-            _isLoading.value = true
-            _error.value = null
-
-            animalRepository.deleteAnimal(animalId)
-                .onSuccess {
-                    _animalsData.value = _animalsData.value - animalId
-                    Log.d("AnimalViewModel", "Uspešno obrisana životinja: $animalId")
-                }
-                .onFailure { exception ->
-                    _error.value = "Greška pri brisanju životinje: ${exception.message}"
-                    Log.e("AnimalViewModel", "Greška pri brisanju životinje", exception)
-                }
-
-            _isLoading.value = false
-        }
-    }
-
-    fun clearError() {
-        _error.value = null
-    }
-
-
-    fun selectImage(context: Context) {
-        val pickImageLauncher =
-            (context as? ComponentActivity)?.registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-                uri?.let { updateSelectedImage(it) }
-            }
-        pickImageLauncher?.launch("image/*")
-    }
-}
 
 class AnimalRepository {
     private val db = FirebaseFirestore.getInstance()
