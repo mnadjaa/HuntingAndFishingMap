@@ -13,66 +13,28 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import rmas.proj.projekat.data.Animal
 import rmas.proj.projekat.data.AnimalRepository
+import rmas.proj.projekat.data.AnimalSightingRepository
 
 class AnimalViewModel(
-    private val animalRepository: AnimalRepository = AnimalRepository()
+    private val animalRepository: AnimalRepository = AnimalRepository(),
+    private val animalSightingRepository: AnimalSightingRepository = AnimalSightingRepository()
 ) : ViewModel() {
 
     private val _animalsData = MutableStateFlow<Map<String, Animal>>(emptyMap())
     val animalsData: StateFlow<Map<String, Animal>> = _animalsData.asStateFlow()
 
-    private val _selectedImageUri = MutableStateFlow<Uri?>(null)
-    val selectedImageUri: StateFlow<Uri?> = _selectedImageUri.asStateFlow()
+    //selected image mi ne treba jer nece korisnici da dodaju slike zivotinja
+//    private val _selectedImageUri = MutableStateFlow<Uri?>(null)
+//    val selectedImageUri: StateFlow<Uri?> = _selectedImageUri.asStateFlow()
+
+    private val _locationSightings = MutableStateFlow<Map<String, Long>>(emptyMap())
+    val locationSightings: StateFlow<Map<String, Long>> = _locationSightings.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
-
-
-    fun updateSelectedImage(uri: Uri?) {
-        _selectedImageUri.value = uri
-    }
-
-    fun loadAnimalData(animalId: String) {
-        viewModelScope.launch {
-            _isLoading.value = true
-            _error.value = null
-
-            animalRepository.getAnimalById(animalId)
-                .onSuccess { animal ->
-                    _animalsData.value = _animalsData.value + (animalId to animal)
-                    Log.d("AnimalViewModel", "Uspešno učitana životinja: ${animal.name}")
-                }
-                .onFailure { exception ->
-                    _error.value = "Greška pri učitavanju životinje: ${exception.message}"
-                    Log.e("AnimalViewModel", "Greška pri učitavanju životinje", exception)
-                }
-
-            _isLoading.value = false
-        }
-    }
-
-    fun loadAnimalsByAuthor(authorId: String) {
-        viewModelScope.launch {
-            _isLoading.value = true
-            _error.value = null
-
-            animalRepository.getAnimalsByAuthor(authorId)
-                .onSuccess { animals ->
-                    val animalMap = animals.associateBy { it.id }
-                    _animalsData.value = _animalsData.value + animalMap
-                    Log.d("AnimalViewModel", "Uspešno učitane životinje autora: ${animals.size}")
-                }
-                .onFailure { exception ->
-                    _error.value = "Greška pri učitavanju životinja: ${exception.message}"
-                    Log.e("AnimalViewModel", "Greška pri učitavanju životinja", exception)
-                }
-
-            _isLoading.value = false
-        }
-    }
 
     fun loadAllAnimals() {
         viewModelScope.launch {
@@ -93,8 +55,79 @@ class AnimalViewModel(
             _isLoading.value = false
         }
     }
+    fun updateLastSeen(animalId: String, locationId:String) {
+        viewModelScope.launch {
+            animalSightingRepository.updateLastSeen(animalId,locationId)
+        }
+    }
+    fun loadSightingsForLocation(locationId: String) {
+        viewModelScope.launch {
 
-    fun createAnimal(animal: Animal, context: Context) {//, context:Context
+            animalSightingRepository.getSightingsForLocation(locationId)
+                .onSuccess { sightings ->
+
+                    val map = sightings.associate {
+                        it.animalId to it.lastSeen
+                    }
+
+                    _locationSightings.value = map
+                }
+
+                .onFailure {
+                    Log.e("AnimalViewModel", "Error loading sightings", it)
+                }
+        }
+    }
+
+}
+
+
+    /*fun loadAnimalData(animalId: String) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value = null
+
+            animalRepository.getAnimalById(animalId)
+                .onSuccess { animal ->
+                    _animalsData.value = _animalsData.value + (animalId to animal)
+                    Log.d("AnimalViewModel", "Uspešno učitana životinja: ${animal.name}")
+                }
+                .onFailure { exception ->
+                    _error.value = "Greška pri učitavanju životinje: ${exception.message}"
+                    Log.e("AnimalViewModel", "Greška pri učitavanju životinje", exception)
+                }
+
+            _isLoading.value = false
+        }
+    }*/
+
+/*    fun updateSelectedImage(uri: Uri?) {
+        _selectedImageUri.value = uri
+    }
+*/
+
+
+    /*fun loadAnimalsByAuthor(authorId: String) { //ovo nece da mi treba
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value = null
+
+            animalRepository.getAnimalsByAuthor(authorId)
+                .onSuccess { animals ->
+                    val animalMap = animals.associateBy { it.id }
+                    _animalsData.value = _animalsData.value + animalMap
+                    Log.d("AnimalViewModel", "Uspešno učitane životinje autora: ${animals.size}")
+                }
+                .onFailure { exception ->
+                    _error.value = "Greška pri učitavanju životinja: ${exception.message}"
+                    Log.e("AnimalViewModel", "Greška pri učitavanju životinja", exception)
+                }
+
+            _isLoading.value = false
+        }
+    }*/
+
+    /*fun createAnimal(animal: Animal, context: Context) {//, context:Context
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
@@ -111,8 +144,9 @@ class AnimalViewModel(
 
             _isLoading.value = false
         }
-    }
+    }*/
 
+    /*
     fun updateAnimal(animal: Animal) {
         viewModelScope.launch {
             _isLoading.value = true
@@ -130,8 +164,9 @@ class AnimalViewModel(
 
             _isLoading.value = false
         }
-    }
+    }*/
 
+    /*
     fun deleteAnimal(animalId: String) {
         viewModelScope.launch {
             _isLoading.value = true
@@ -149,17 +184,16 @@ class AnimalViewModel(
 
             _isLoading.value = false
         }
-    }
+    }*/
 
-    fun clearError() {
+    /*fun clearError() {
         _error.value = null
-    }
+    }*/
 
-    fun selectImage(context: Context) {
+    /*fun selectImage(context: Context) {
         val pickImageLauncher =
             (context as? ComponentActivity)?.registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
                 uri?.let { updateSelectedImage(it) }
             }
         pickImageLauncher?.launch("image/*")
-    }
-}
+    }*/

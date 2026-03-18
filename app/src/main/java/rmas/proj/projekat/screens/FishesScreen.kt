@@ -215,9 +215,9 @@ fun FishItem(
                 Text(text = fish.name, style = MaterialTheme.typography.titleMedium)
                 Text(text = fish.description, style = MaterialTheme.typography.bodySmall)
             }
-            if (fish.photo.isNotEmpty()) {
+            if (fish.image.isNotEmpty()) {
                 AsyncImage(
-                    model = fish.photo,
+                    model = fish.image,
                     contentDescription = null,
                     modifier = Modifier
                         .size(56.dp)

@@ -61,9 +61,11 @@ import rmas.proj.projekat.data.LocationType
 import rmas.proj.projekat.data.Rating
 import rmas.proj.projekat.viewmodel.LocationViewModel
 import rmas.proj.projekat.viewmodel.UserViewModel
+import rmas.proj.projekat.viewmodel.AnimalViewModel
+import rmas.proj.projekat.viewmodel.FishViewModel
 
 @Composable
-fun LocationDetailsDialog(
+fun LocationDetailsDialog( //prikazuje sve informacije o selektovanoj lokaciji
     location: Location,
     currentUserId: String = FirebaseAuth.getInstance().currentUser?.uid ?: "",
     context: Context,
@@ -77,12 +79,11 @@ fun LocationDetailsDialog(
     var comment by remember { mutableStateOf("") }
     var showAddRatingDialog by remember { mutableStateOf(false) }
     val userViewModel: UserViewModel = viewModel()
-
+    val animalViewModel: AnimalViewModel = viewModel()
+    val fishViewModel: FishViewModel = viewModel()
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
-
     val scope = rememberCoroutineScope()
     val selectedImageUri by viewModel.selectedImageUri.collectAsState()
-
     val animalsAtLocation by viewModel.animalsAtLocation.collectAsState()
     val fishAtLocation by viewModel.fishAtLocation.collectAsState()
     val availableAnimals by viewModel.availableAnimals.collectAsState()
@@ -90,14 +91,22 @@ fun LocationDetailsDialog(
     var showAddAnimalDialog by remember { mutableStateOf(false) }
     var showAddFishDialog by remember { mutableStateOf(false) }
     var showRatings by remember { mutableStateOf(false) }
-
-    val existingRating = location.ratings.find { it.userId == currentUserId }    //Find existing rating for current user
+    val existingRating = location.ratings.find { it.userId == currentUserId }    //za ulogovanog korisnika
+    val animal_sightings by animalViewModel.locationSightings.collectAsState()
+    val fish_sightings by fishViewModel.locationSightings.collectAsState()
 
     LaunchedEffect(Unit) {
         // Clear any previously selected image when opening the dialog
         viewModel.updateSelectedImage(null)
         // Ucitaj detalje lokacije sa zivotinjama/ribama
         viewModel.loadLocationDetails(location.id)
+    }
+    //ucitava vidjenja za odredjenu lokaciju
+    LaunchedEffect(location.id) {
+        animalViewModel.loadSightingsForLocation(location.id)
+    }
+    LaunchedEffect(location.id) {
+        fishViewModel.loadSightingsForLocation(location.id)
     }
     Log.d("DEBUG", "Lokacija otvorena u dialogu: ${location.photos}")
 
@@ -150,6 +159,7 @@ fun LocationDetailsDialog(
                         )
                     }
                 }
+                //ime i opis
                 Text(
                     text = location.name,
                     style = MaterialTheme.typography.headlineSmall
@@ -159,7 +169,7 @@ fun LocationDetailsDialog(
                     text = location.description,
                     style = MaterialTheme.typography.bodyLarge
                 )
-
+                //dodavanje zivotinje i lista zivotinja na lokaciji
                 if (location.type == LocationType.HUNTING) {
                     Spacer(modifier = Modifier.height(16.dp))
 
@@ -169,7 +179,7 @@ fun LocationDetailsDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Životinje na ovoj lokaciji (${animalsAtLocation.size})",
+                            text = "Dodaj životinju (${animalsAtLocation.size})",
                             style = MaterialTheme.typography.titleMedium,
                         )
                         IconButton(onClick = { showAddAnimalDialog = true }) {
@@ -185,22 +195,16 @@ fun LocationDetailsDialog(
                             modifier = Modifier.padding(vertical = 8.dp)
                         )
                     } else {
-                        LazyRow(
-                            modifier = Modifier.fillMaxWidth(),
-                            contentPadding = PaddingValues(vertical = 8.dp)
-                        ) {
-                            items(animalsAtLocation) { animal ->
-                                AnimalChip(
-                                    animal = animal,
-                                    onRemove = {
-                                        viewModel.removeAnimalFromLocation(location.id, animal.id)
-                                    }
-                                )
+                        AnimalsSection(
+                            animals = animalsAtLocation,
+                            sightings = animal_sightings,
+                            onSeenClick = { animal ->
+                                animalViewModel.updateLastSeen(animal.id, location.id)
                             }
-                        }
+                        )
                     }
                 }
-
+                //dodavanje ribe i lista riba na lokaciji
                 if (location.type == LocationType.FISHING) {
                     Spacer(modifier = Modifier.height(16.dp))
 
@@ -210,7 +214,7 @@ fun LocationDetailsDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Ribe na ovoj lokaciji (${fishAtLocation.size})",
+                            text = "Dodaj ribu (${fishAtLocation.size})",
                             style = MaterialTheme.typography.titleMedium,
                         )
                         IconButton(onClick = { showAddFishDialog = true }) {
@@ -226,23 +230,16 @@ fun LocationDetailsDialog(
                             modifier = Modifier.padding(vertical = 8.dp)
                         )
                     } else {
-                        LazyRow(
-                            modifier = Modifier.fillMaxWidth(),
-                            contentPadding = PaddingValues(vertical = 8.dp)
-                        ) {
-                            items(fishAtLocation) { fish ->
-                                FishChip(
-                                    fish = fish,
-                                    onRemove = {
-                                        viewModel.removeFishFromLocation(location.id, fish.id)
-                                    }
-                                )
+                        FishesSection(
+                            fishes = fishAtLocation,
+                            sightings = fish_sightings,
+                            onSeenClick = { fish ->
+                                fishViewModel.updateLastSeen(fish.id, location.id)
                             }
-                        }
+                        )
                     }
                 }
-
-                // Photos section
+                // slike lokacije, mogucnost dodavanja slike
                 if (location.photos.isNotEmpty()) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -283,7 +280,6 @@ fun LocationDetailsDialog(
                                         modifier = Modifier.fillMaxSize(),
                                         contentScale = ContentScale.Crop
                                     )
-
                                     // Dugme za potvrdu dodavanja slike
                                     Button(
                                         onClick = {
@@ -315,7 +311,6 @@ fun LocationDetailsDialog(
                                 }
                             }
                         }
-
                         // Show existing photos
                         items(location.photos) { photoUrl ->
                             AsyncImage(
@@ -329,7 +324,6 @@ fun LocationDetailsDialog(
                         }
                     }
                 }
-
                 //prosecna ocena
                 val averageRating = if (location.ratings.isNotEmpty()) {
                     location.ratings.map { it.score }.average().toFloat()
@@ -358,23 +352,19 @@ fun LocationDetailsDialog(
                     )
 
                 }
-
-                // Ratings section
+                // Deo za dodavanje ocene i prikaz ocena
                 Text(
                     text = "Ocene (${location.ratings.size})",
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
                 )
-
                 Button(
                     onClick = { showRatings = !showRatings },
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(if (showRatings) "Sakrij ocene" else "Prikaži ocene")
                 }
-
-                if(showRatings){
-                    // Display existing ratings
+                if(showRatings){//prikazuju se sve ocene
                     location.ratings.forEach { existingRating ->
                         RatingItem(
                             rating = existingRating,
@@ -382,23 +372,18 @@ fun LocationDetailsDialog(
                         )
                     }
                 }
-
-                // --------- AUTO POPUNJAVANJE ---------
-
+                // --------- AUTO POPUNJAVANJE - ako je korisnik vec ocenio tu lokaciju tu stoji njegova stara ocena---------
                 LaunchedEffect(showAddRatingDialog, existingRating) {
                     if (showAddRatingDialog && existingRating != null) {
                         rating = existingRating.score
                         comment = existingRating.comment
                     }
-
                     if (showAddRatingDialog && existingRating == null) {
                         rating = 0f
                         comment = ""
                     }
                 }
-
-// --------- DUGME ZA DODAVANJE / IZMENE ---------
-
+                // dodavanje/izmena ocene
                 Button(
                     onClick={showAddRatingDialog=!showAddRatingDialog},
                     modifier = Modifier.fillMaxWidth()
@@ -411,9 +396,7 @@ fun LocationDetailsDialog(
                         }
                     )
                 }
-
                 if(showAddRatingDialog){
-                    // Add/Update rating section
                     Text(
                         text = if (existingRating != null) "Promeni ocenu" else "Dodaj ocenu",
                         style = MaterialTheme.typography.titleMedium,
@@ -462,9 +445,7 @@ fun LocationDetailsDialog(
             }
         }
     }
-
-    //DODAAVNJE ZIVOTINJA I RIBA
-
+    //DODAAVNJE ZIVOTINJA I RIBA NA LOKACIJU
     if (showAddAnimalDialog) {
         AddAnimalToLocationDialog(
             availableAnimals = availableAnimals,
@@ -567,4 +548,3 @@ fun RatingItem(
         }
     }
 }
-

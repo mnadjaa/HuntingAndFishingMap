@@ -38,53 +38,42 @@ class LocationViewModel(// ViewModel za dodavanje objekata, ocena i filtriranje 
     private val animalRepository: AnimalRepository= AnimalRepository(),
     private val fishRepository: FishRepository=FishRepository()
 ) : ViewModel() {
-
     private val _isFilteringActive = MutableStateFlow(false)
     val isFilteringActive = _isFilteringActive.asStateFlow()
-
     private val _locations = MutableStateFlow<Map<String, Location>>(emptyMap())
     val locations = _locations.asStateFlow()
-
     private val _filteredLocations = MutableStateFlow<List<Location>>(emptyList())
     val filteredLocations = _filteredLocations.asStateFlow()
-
     private val _isLoading = MutableStateFlow(false)
-    val isLoading = _isLoading.asStateFlow()
-
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
-
     private val _animalsAtLocation = MutableStateFlow<List<Animal>>(emptyList())
     val animalsAtLocation: StateFlow<List<Animal>> = _animalsAtLocation
     private val _fishAtLocation = MutableStateFlow<List<Fish>>(emptyList())
     val fishAtLocation: StateFlow<List<Fish>> = _fishAtLocation
-
     private val _availableAnimals = MutableStateFlow<List<Animal>>(emptyList())
     val availableAnimals: StateFlow<List<Animal>> = _availableAnimals
     private val _availableFish = MutableStateFlow<List<Fish>>(emptyList())
     val availableFish: StateFlow<List<Fish>> = _availableFish
-
     private val _isLoadingDetails = MutableStateFlow(false)
-    val isLoadingDetails: StateFlow<Boolean> = _isLoadingDetails
     private val _currentLocation = MutableStateFlow<Location?>(null)
-    val currentLocation: StateFlow<Location?> = _currentLocation
-
     private val _selectedAnimals = MutableStateFlow<List<Animal>>(emptyList())
     val selectedAnimals: StateFlow<List<Animal>> = _selectedAnimals.asStateFlow()
-
     private val _selectedFishes = MutableStateFlow<List<Fish>>(emptyList())
     val selectedFishes: StateFlow<List<Fish>> = _selectedFishes.asStateFlow()
-
     private var currentSearchQuery = ""
-    private var currentType: LocationType? = null
     private var currentAuthorId: String? = null
+    private val _selectedLocationType = MutableStateFlow<LocationType?>(null)
+    val selectedLocationType: StateFlow<LocationType?> = _selectedLocationType.asStateFlow()
+    private val _selectedMaxDistance = MutableStateFlow<Double?>(null)
+    val selectedMaxDistance: StateFlow<Double?> = _selectedMaxDistance.asStateFlow()
+    private val _userLocation = MutableStateFlow<LatLng?>(null)
 
     fun loadLocation(locationId: String) {
         viewModelScope.launch {
             // ucitava lokaciju
             locationRepository.getLocation(locationId).onSuccess { location ->
                 _currentLocation.value = location
-
                 // ucitava zivotinje/ribe
                 when (location.type) {
                     LocationType.HUNTING -> {
@@ -101,8 +90,7 @@ class LocationViewModel(// ViewModel za dodavanje objekata, ocena i filtriranje 
     }
 
     //------------------------------------------------------------------------------
-    //ovo je za pregled zivotinja i riba na lokaicji i dodavanje na lokaciju
-
+    //loadavailable ucitava sve zivotinje/ribe koje mogu da se dodaju na lokaciju tj. koje se ne nalaze vec na njoj
     private suspend fun loadAvailableAnimals(excludeIds: List<String>) {
         try {
             Log.d("LocationViewModel", "Loading available animals, excluding: ${excludeIds.size}")
@@ -120,7 +108,6 @@ class LocationViewModel(// ViewModel za dodavanje objekata, ocena i filtriranje 
             _availableAnimals.value = emptyList()
         }
     }
-
     private suspend fun loadAvailableFish(excludeIds: List<String>) {
         try {
             Log.d("LocationViewModel", "Loading available fish, excluding: ${excludeIds.size}")
@@ -138,8 +125,7 @@ class LocationViewModel(// ViewModel za dodavanje objekata, ocena i filtriranje 
             _availableFish.value = emptyList()
         }
     }
-
-
+    //ucitava info o lokaciji
     fun loadLocationDetails(locationId: String) {
         viewModelScope.launch {
             _isLoadingDetails.value = true
@@ -177,8 +163,7 @@ class LocationViewModel(// ViewModel za dodavanje objekata, ocena i filtriranje 
             }
         }
     }
-
-
+    //load forlocation ucitava zivotinje/ribe na lokaciji
     private suspend fun loadAnimalsForLocation(locationId: String) {
         try {
             Log.d("LocationViewModel", "Fetching animals for location: $locationId")
@@ -196,7 +181,6 @@ class LocationViewModel(// ViewModel za dodavanje objekata, ocena i filtriranje 
             _animalsAtLocation.value = emptyList()
         }
     }
-
     private suspend fun loadFishForLocation(locationId: String) {
         try {
             Log.d("LocationViewModel", "Fetching fish for location: $locationId")
@@ -214,7 +198,7 @@ class LocationViewModel(// ViewModel za dodavanje objekata, ocena i filtriranje 
             _fishAtLocation.value = emptyList()
         }
     }
-
+    //dodavanje ziv/riba na lokaciju
     fun addAnimalToLocation(locationId: String, animalId: String) {
         viewModelScope.launch {
             _isLoadingDetails.value = true
@@ -232,7 +216,6 @@ class LocationViewModel(// ViewModel za dodavanje objekata, ocena i filtriranje 
             _isLoadingDetails.value = false
         }
     }
-
     fun addFishToLocation(locationId: String, fishId: String) {
         viewModelScope.launch {
             _isLoadingDetails.value = true
@@ -251,6 +234,8 @@ class LocationViewModel(// ViewModel za dodavanje objekata, ocena i filtriranje 
         }
     }
 
+    //remove ipak ne koristim
+    /*
     fun removeAnimalFromLocation(locationId: String, animalId: String) {
         viewModelScope.launch {
             _isLoadingDetails.value = true
@@ -267,9 +252,9 @@ class LocationViewModel(// ViewModel za dodavanje objekata, ocena i filtriranje 
 
             _isLoadingDetails.value = false
         }
-    }
+    }*/
 
-    fun removeFishFromLocation(locationId: String, fishId: String) {
+    /*fun removeFishFromLocation(locationId: String, fishId: String) {
         viewModelScope.launch {
             _isLoadingDetails.value = true
 
@@ -285,7 +270,7 @@ class LocationViewModel(// ViewModel za dodavanje objekata, ocena i filtriranje 
 
             _isLoadingDetails.value = false
         }
-    }
+    }*/
 
     //-------------------------------------------------------------------------------------------
     //pokretni marker
@@ -314,83 +299,8 @@ class LocationViewModel(// ViewModel za dodavanje objekata, ocena i filtriranje 
         loadAllLocations()
     }
 
-    //-------------------FILTER---------------------------------------------------------------------
-
-
-    fun filterLocationsByAnimals(selectedAnimalIds: Set<String>) {
-        viewModelScope.launch {
-            _isFilteringActive.value = true
-            _isLoading.value = true
-
-            try {
-                viewModelScope.launch{
-                    if (selectedAnimalIds.isEmpty()) {// Ako nema selektovanih životinja, prikaži sve lokacije
-
-                        _filteredLocations.value = _locations.value.values.toList()
-                        _isFilteringActive.value = false
-                    } else {
-                        // Filtriraj lokacije koje sadrže SVE selektovane životinje
-                        val filtered = _locations.value.values.filter { location ->
-                            // Proveri da li lokacija sadrži SVE selektovane životinje
-                            selectedAnimalIds.all { animalId ->
-                                location.animalIds.contains(animalId)
-                            }
-                        }
-                        _filteredLocations.value = filtered
-                        _isFilteringActive.value = true
-
-                        Log.d(
-                            "LocationViewModel",
-                            "Filtered ${filtered.size} locations with all selected animals"
-                        )
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e("LocationViewModel", "Error filtering locations", e)
-                _error.value = "Greška pri filtriranju: ${e.message}"
-            } finally {
-                _isLoading.value = false
-            }
-        }
-    }
-
-    fun filterLocationsByFieshes(selectedFishIds: Set<String>) {
-        viewModelScope.launch {
-            _isFilteringActive.value = true
-            _isLoading.value = true
-
-            try {
-                viewModelScope.launch{
-                    if (selectedFishIds.isEmpty()) {// Ako nema selektovanih životinja, prikaži sve lokacije
-                        _filteredLocations.value = _locations.value.values.toList()
-                        _isFilteringActive.value = false
-                    } else {
-                        // Filtriraj lokacije koje sadrže SVE selektovane ribe
-                        val filtered = _locations.value.values.filter { location ->
-                            // Proveri da li lokacija sadrži SVE selektovane ribe
-                            selectedFishIds.all { fishId ->
-                                location.fishIds.contains(fishId)
-                            }
-                        }
-                        _filteredLocations.value = filtered
-                        _isFilteringActive.value = true
-
-                        Log.d(
-                            "LocationViewModel",
-                            "Filtered ${filtered.size} locations with all selected fishes"
-                        )
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e("LocationViewModel", "Error filtering locations", e)
-                _error.value = "Greška pri filtriranju: ${e.message}"
-            } finally {
-                _isLoading.value = false
-            }
-        }
-    }
-
-    // ViewModel deo
+    //-------------------FILTRIRANJE---------------------------------------------------------------------
+    //za selektovanje i deselektovanje zivotinja/riba
     fun toggleAnimalSelection(animal: Animal) {
         val currentSelected = _selectedAnimals.value.toMutableList()
         if (currentSelected.any { it.id == animal.id }) {
@@ -400,11 +310,10 @@ class LocationViewModel(// ViewModel za dodavanje objekata, ocena i filtriranje 
         }
         _selectedAnimals.value = currentSelected
 
-        // Automatski ažuriraj filtere čim se nešto promeni
+        // Automatski azuriraj filtere cim se nesto promeni
         applyFilters()
         _isFilteringActive.value = _selectedAnimals.value.isNotEmpty() || _selectedFishes.value.isNotEmpty()
     }
-
     fun toggleFishSelection(fish: Fish) {
         val currentSelected = _selectedFishes.value.toMutableList()
         if (currentSelected.any { it.id == fish.id }) {
@@ -419,75 +328,116 @@ class LocationViewModel(// ViewModel za dodavanje objekata, ocena i filtriranje 
         _isFilteringActive.value = _selectedAnimals.value.isNotEmpty() || _selectedFishes.value.isNotEmpty()
     }
 
+    //za odabir lov/ribolov
+    fun setLocationType(type: LocationType?) {
+        _selectedLocationType.value = type
+        _isFilteringActive.value=true
+        Log.d("FILTER_DEBUG", "SET TYPE = $type")
+        applyFilters()
+    }
+
+    //-----------za udaljenost--------------------------------
+    fun setUserLocation(latLng: LatLng) {
+        _userLocation.value = latLng
+    }
+
+    fun setMaxDistance(distanceKm: Double?) {
+        _selectedMaxDistance.value = distanceKm
+        applyFilters()
+    }
+
+    private fun distanceBetween(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+        val results = FloatArray(1)
+        android.location.Location.distanceBetween(lat1, lon1, lat2, lon2, results)
+        return results[0] / 1000.0
+    }
+    //---------------------------------------
 
     private fun loadAllLocations() {
         viewModelScope.launch {
             locationRepository.getAllLocations()
                 .onSuccess { locationsList ->
                     _locations.value = locationsList.associateBy { it.id }
-
-                    // Ako je filter vec aktivan, ne diraj filteredLocations direktno nego pozovi applyFilters da ponovo procesira nove podatke
-                    if (_isFilteringActive.value) {
-                        applyFilters()
-                    } else {
-                        _filteredLocations.value = locationsList
-                    }
+                    applyFilters()
                 }
         }
     }
 
     fun applyFilters(
         authorId: String? = currentAuthorId,
-        type: LocationType? = currentType,
         searchQuery: String = currentSearchQuery
     ) {
         currentSearchQuery = searchQuery
-        currentType = type
         currentAuthorId = authorId
-
+        val type = _selectedLocationType.value
         val selectedAnimalsIds = _selectedAnimals.value.map { it.id }
         val selectedFishIds = _selectedFishes.value.map { it.id }
 
         val filtered = _locations.value.values.filter { location ->
             val matchesAuthor = currentAuthorId == null || location.authorId == currentAuthorId
-            val matchesType = currentType == null || location.type == currentType
+            val matchesType = when (type) {
+                null -> true
+                else -> location.type == type
+            }
             val matchesSearch = location.name.contains(currentSearchQuery, ignoreCase = true) ||
                     location.description.contains(currentSearchQuery, ignoreCase = true)
 
             // lokacije koje sadrze sve zivotinje koje su selektovane u filteru
+            /*
             val matchesAnimals = selectedAnimalsIds.isEmpty() ||
-                    selectedAnimalsIds.all { id -> location.animalIds.contains(id) }
-
+                    selectedAnimalsIds.any { id -> location.animalIds.contains(id) }
             val matchesFish = selectedFishIds.isEmpty() ||
-                    selectedFishIds.all { id -> location.fishIds.contains(id) }
+                    selectedFishIds.any { id -> location.fishIds.contains(id) }
+            */
 
-            matchesAuthor && matchesType && matchesSearch && matchesAnimals && matchesFish
+            val matchesAnimalsOrFish = when {
+                selectedAnimalsIds.isEmpty() && selectedFishIds.isEmpty() -> true
+                selectedAnimalsIds.isNotEmpty() && selectedFishIds.isNotEmpty() ->
+                    selectedAnimalsIds.any { id -> location.animalIds.contains(id) } ||
+                            selectedFishIds.any { id -> location.fishIds.contains(id) }
+                selectedAnimalsIds.isNotEmpty() ->
+                    selectedAnimalsIds.any { id -> location.animalIds.contains(id) }
+                else ->
+                    selectedFishIds.any { id -> location.fishIds.contains(id) }
+            }
+
+            val userLoc = _userLocation.value
+            val maxDist = _selectedMaxDistance.value
+
+            val matchesDistance = if (maxDist != null && userLoc != null) {
+                val dist = distanceBetween(
+                    userLoc.latitude, userLoc.longitude,
+                    location.position.latitude, location.position.longitude
+                )
+                dist <= maxDist
+            } else true
+
+
+            matchesAuthor && matchesType && matchesSearch && matchesAnimalsOrFish && matchesDistance
         }
 
         _filteredLocations.value = filtered
-        if (selectedAnimalsIds.isNotEmpty() || selectedFishIds.isNotEmpty()) {
+        if (selectedAnimalsIds.isNotEmpty() || selectedFishIds.isNotEmpty() || type != null || currentAuthorId != null ||  _selectedMaxDistance.value != null)
+        {
             _isFilteringActive.value = true
         }
         Log.d("APPLY_FILTERS", "Final Result: ${filtered.size} locations found.")
+        Log.d("FILTER_DEBUG", "TYPE = $type")
+        Log.d("FILTER_DEBUG", "ALL LOCATIONS = ${_locations.value.values.map { it.type }}")
     }
-
     private suspend fun ensureLocationsLoaded() {
         if (_locations.value.isEmpty()) {
             _locations.first { it.isNotEmpty() }
         }
     }
-
-
     fun clearAllFilters() {
         _selectedAnimals.value = emptyList()
         _selectedFishes.value = emptyList()
-        _isFilteringActive.value = false
+        _selectedLocationType.value = null
         currentSearchQuery = ""
-        currentType = null
-        applyFilters() // Vratiće sve lokacije na mapu
+        _selectedMaxDistance.value = null
+        applyFilters() // Vratice sve lokacije na mapu
     }
-
-
     //-----------------------------------------------------------------------------------------------------------------------------------------
 
     fun clearError() {
@@ -593,7 +543,7 @@ class LocationViewModel(// ViewModel za dodavanje objekata, ocena i filtriranje 
         }
     }
 
-    fun deleteLocation(locationId: String) {
+   /* fun deleteLocation(locationId: String) {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
@@ -611,7 +561,7 @@ class LocationViewModel(// ViewModel za dodavanje objekata, ocena i filtriranje 
 
             _isLoading.value = false
         }
-    }
+    }*/
 
     fun addRating(locationId: String, rating: Rating, context: Context) {
         viewModelScope.launch {
@@ -677,6 +627,4 @@ class LocationViewModel(// ViewModel za dodavanje objekata, ocena i filtriranje 
             }
         }
     }
-
-
 }

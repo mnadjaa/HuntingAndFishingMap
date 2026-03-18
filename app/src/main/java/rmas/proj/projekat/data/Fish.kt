@@ -14,7 +14,7 @@ data class Fish(
     @DocumentId var id: String = "",          // Ovaj ID je automatski dodeljen od strane Firestore-a
     val name: String = "",
     val description: String = "",
-    val photo: String = "",  // val photos: List<String> = emptyList<String>(),
+    val image: String = "",  // val photos: List<String> = emptyList<String>(),
     val authorId: String = "",//OVO IZBACI POSTO NECE KORISNICI MOCI DA DODAJU ZIVOTINJE 🐛
     val locationIds: List<String> = emptyList()
 )
@@ -24,7 +24,7 @@ class FishRepository {
     private val fishesCollection = db.collection("fishes")
 
     private val _fishes = MutableStateFlow<Map<String, Fish>>(emptyMap())
-    val fishes: Flow<Map<String, Fish>> = _fishes.asStateFlow()
+    //val fishes: Flow<Map<String, Fish>> = _fishes.asStateFlow()
 
     suspend fun getFishById(fishId: String): Result<Fish> {
         return try {
@@ -75,7 +75,7 @@ class FishRepository {
             val snapshot = fishesCollection.get().await()
             val fishes = snapshot.documents.mapNotNull { doc ->
                 val fish = doc.toObject(Fish::class.java)
-                Log.d("FishRepository", "Fetched fish: ${fish?.name}, photo: ${fish?.photo}")
+                Log.d("FishRepository", "Fetched fish: ${fish?.name}, image: ${fish?.image}")
                 fish
             }
 
@@ -91,6 +91,10 @@ class FishRepository {
         }
     }
 
+    companion object {
+        private const val TAG = "FishRepository"
+    }
+    /*
     suspend fun createFish(fish: Fish, context: android.content.Context, imageUri: Uri?): Result<Fish> {
         return try {
             val documentRef = fishesCollection.document()
@@ -102,7 +106,7 @@ class FishRepository {
             }
 
             // Use the cloudinary URL instead of local URI
-            val finalFish = fishWithId.copy(photo = imageUrl ?: "")
+            val finalFish = fishWithId.copy(image = imageUrl ?: "")
             documentRef.set(finalFish).await()
 
             // Update the internal state
@@ -145,8 +149,5 @@ class FishRepository {
             Result.failure(e)
         }
     }
-
-    companion object {
-        private const val TAG = "FishRepository"
-    }
+     */
 }

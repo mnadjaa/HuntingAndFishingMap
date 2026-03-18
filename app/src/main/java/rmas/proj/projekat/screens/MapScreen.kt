@@ -81,13 +81,12 @@ fun MapScreen(
     var permissionGranted by remember { mutableStateOf(false) }
     var showAddLocationDialog by remember { mutableStateOf(false) } // State za dijaloge
     var selectedLocation by remember { mutableStateOf<Location?>(null) }
-
     val filteredLocations by viewModel.filteredLocations.collectAsState()
     val isFilteringActive by viewModel.isFilteringActive.collectAsState()
     val allLocations by viewModel.locations.collectAsState()
+    val selectedLocationType by viewModel.selectedLocationType.collectAsState()
 
-
-    val locationsToShow = remember(allLocations, filteredLocations, isFilteringActive) {
+    val locationsToShow = remember(allLocations, filteredLocations, isFilteringActive, selectedLocationType) {
         if (isFilteringActive) {
             filteredLocations
         } else {
@@ -95,7 +94,7 @@ fun MapScreen(
         }
     }
 
-    //--------------------DEBUG----------------------------------------------------
+    //------------------------------------------------------------------------
     LaunchedEffect(isFilteringActive, locationsToShow.size) {
         if (isFilteringActive) {
             Log.d("LocationViewModel", "Filtering active - showing ${locationsToShow.size} filtered locations")
@@ -103,7 +102,6 @@ fun MapScreen(
             Log.d("LocationViewModel", "Loaded - showing all ${locationsToShow.size}")
         }
     }
-
     LaunchedEffect(locationsToShow, isFilteringActive) {
         Log.d(
             "DEBUG_MAP",
@@ -111,7 +109,7 @@ fun MapScreen(
         )
     }
     //-----------------------------------------------------------------------------
-
+    //POKRETNI MARKER
     var characterPosition = viewModel.characterPosition
     //val characterPosition by viewModel.characterPosition.collectAsState() // ako ne radi zameni donju liniiju sa ovom 🐛👈 Mora biti collectAsState()
     val characterMarkerState = remember { mutableStateOf(MarkerState(position = userLocation ?: LatLng(0.0, 0.0))) }
@@ -128,6 +126,8 @@ fun MapScreen(
                 locationResult.lastLocation?.let { location ->
                     val latLng = LatLng(location.latitude, location.longitude)
                     userLocation = latLng
+
+                    viewModel.setUserLocation(latLng)  //🛤️
 
                     // updateuje se pozicija ako nije ukljuceno manuallycontrolling
                     if (!isManuallyControlling) {
@@ -146,6 +146,7 @@ fun MapScreen(
             if (granted) {
                 getCurrentLocation(fusedLocationProvider) { location ->
                     userLocation = location
+                    viewModel.setUserLocation(location)//🛤️
                     //pokretni marker init:
                     viewModel.initializeCharacterPosition(location)
                     characterMarkerState.value = MarkerState(position = location)
@@ -155,7 +156,7 @@ fun MapScreen(
         }
     )
     //📌
-    // Cleanup location updates when leaving the screen
+    // Cleanup location updates when leaving the screen - 🐛 KAKO SE OVO PONASA KAD SE KORISTI MANUAL - DA LI RESETUJE POZICIJU - NE TREBA VALJDA TO DA RADI?
     DisposableEffect(Unit) {
         onDispose {
             fusedLocationProvider.removeLocationUpdates(locationCallback)
@@ -183,8 +184,8 @@ fun MapScreen(
             locationPermissionLauncher.launch(permission)
         }
     }
-    val cameraPositionState = rememberCameraPositionState()    // azuriranje pozicije kamere
 
+    val cameraPositionState = rememberCameraPositionState()    // azuriranje pozicije kamere
     LaunchedEffect(userLocation) {
         userLocation?.let {
             cameraPositionState.animate(

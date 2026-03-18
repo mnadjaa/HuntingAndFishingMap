@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -19,6 +20,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -29,6 +34,17 @@ import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
 import rmas.proj.projekat.data.Animal
 import rmas.proj.projekat.data.Fish
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material3.IconButton
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+
 
 // Dijalog za izbor zivotinje
 @Composable
@@ -83,9 +99,9 @@ fun AddAnimalToLocationDialog(
                                         .padding(12.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    if (animal.photo.isNotEmpty()) {
+                                    if (animal.image.isNotEmpty()) {
                                         AsyncImage(
-                                            model = animal.photo,
+                                            model = animal.image,
                                             contentDescription = animal.name,
                                             modifier = Modifier
                                                 .size(60.dp)
@@ -180,9 +196,9 @@ fun AddFishToLocationDialog(
                                         .padding(12.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    if (fish.photo.isNotEmpty()) {
+                                    if (fish.image.isNotEmpty()) {
                                         AsyncImage(
-                                            model = fish.photo,
+                                            model = fish.image,
                                             contentDescription = fish.name,
                                             modifier = Modifier
                                                 .size(60.dp)
@@ -223,114 +239,280 @@ fun AddFishToLocationDialog(
     }
 }
 
-// Composable za prikaz zivotinje kao chip
+
 @Composable
-fun AnimalChip(
-    animal: Animal,
-    onRemove: () -> Unit
+fun AnimalsSection(
+    animals: List<Animal>,
+    sightings: Map<String, Long>,
+    onSeenClick: (Animal) -> Unit
 ) {
-    Card(
-        modifier = Modifier
-            .padding(end = 8.dp)
-            .width(150.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp)
+
+    var expanded by remember { mutableStateOf(false) }
+
+    Column {
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { expanded = !expanded }
+                .padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+
+            Text(
+                text = "Životinje na ovoj lokaciji",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.weight(1f)
+            )
+
+            Icon(
+                imageVector = if (expanded)
+                    Icons.Default.KeyboardArrowUp
+                else
+                    Icons.Default.KeyboardArrowDown,
+                contentDescription = "Expand"
+            )
+        }
+
+        if (expanded) {
+
+            if (animals.isEmpty()) {
                 Text(
-                    text = animal.name,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f)
+                    text = "Nema dodatih životinja",
+                    modifier = Modifier.padding(8.dp)
                 )
-                /*
-                IconButton(
-                    onClick = onRemove,
-                    modifier = Modifier.size(24.dp)
-                ) {
-                    Icon(
-                        Icons.Default.Close,
-                        contentDescription = "Ukloni",
-                        modifier = Modifier.size(16.dp)
-                    )
+            } else {
+
+                Column {
+                    animals.forEach { animal ->
+                        val lastSeen = sightings[animal.id] ?: 0L
+                        AnimalRow(
+                            animal = animal,
+                            lastSeen = lastSeen,
+                            onSeenClick = { onSeenClick(animal) }
+                        )
+                    }
                 }
 
-                 */
             }
+        }
+    }
+}
 
-            if (animal.photo.isNotEmpty()) {
+@Composable
+fun AnimalRow(
+    animal: Animal,
+    lastSeen: Long,
+    onSeenClick: () -> Unit
+) {
+
+    var seenClicked by remember { mutableStateOf(false) }
+
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+    ) {
+
+        Row(
+            modifier = Modifier
+                .padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+
+            if (animal.image.isNotEmpty()) {
                 AsyncImage(
-                    model = animal.photo,
+                    model = animal.image,
                     contentDescription = animal.name,
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(80.dp)
-                        .padding(top = 4.dp),
+                        .size(60.dp),
                     contentScale = ContentScale.Crop
+                )
+            }
+
+            Spacer(Modifier.width(12.dp))
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+
+                Text(
+                    text = animal.name,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Text(
+                    text = if (lastSeen == 0L)
+                        "Nije još viđena"
+                    else
+                        "Poslednji put viđena: ${formatDate(lastSeen)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+
+            IconButton(
+                onClick = {
+                    seenClicked = !seenClicked
+                    if(seenClicked){
+                        CoroutineScope(Dispatchers.Main).launch {
+                            delay(5000)
+                            if (seenClicked) {
+                                onSeenClick()
+                            }
+                        }
+                    }
+                }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Visibility,
+                    contentDescription = "Seen",
+                    tint = if (seenClicked)
+                        MaterialTheme.colorScheme.primary
+                    else
+                        MaterialTheme.colorScheme.onSurface
                 )
             }
         }
     }
 }
 
-// Composable za prikaz ribe kao chip
+
 @Composable
-fun FishChip(
-    fish: Fish,
-    onRemove: () -> Unit
+fun FishesSection(
+    fishes: List<Fish>,
+    sightings: Map<String, Long>,
+    onSeenClick: (Fish) -> Unit
 ) {
+
+    var expanded by remember { mutableStateOf(false) }
+
+    Column {
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { expanded = !expanded }
+                .padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+
+            Text(
+                text = "Ribe na ovoj lokaciji",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.weight(1f)
+            )
+
+            Icon(
+                imageVector = if (expanded)
+                    Icons.Default.KeyboardArrowUp
+                else
+                    Icons.Default.KeyboardArrowDown,
+                contentDescription = "Expand"
+            )
+        }
+
+        if (expanded) {
+
+            if (fishes.isEmpty()) {
+                Text(
+                    text = "Nema dodatih riba",
+                    modifier = Modifier.padding(8.dp)
+                )
+            } else {
+
+                Column {
+                    fishes.forEach { fish ->
+                        val lastSeen = sightings[fish.id] ?: 0L
+                        FishRow(
+                            fish = fish,
+                            lastSeen = lastSeen,
+                            onSeenClick = { onSeenClick(fish) }
+                        )
+                    }
+                }
+
+            }
+        }
+    }
+}
+
+@Composable
+fun FishRow(
+    fish: Fish,
+    lastSeen: Long,
+    onSeenClick: () -> Unit
+) {
+
+    var seenClicked by remember { mutableStateOf(false) }
+
+
     Card(
         modifier = Modifier
-            .padding(end = 8.dp)
-            .width(150.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.tertiaryContainer
-        )
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(12.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = fish.name,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f)
-                )
-                /*
-                IconButton(
-                    onClick = onRemove,
-                    modifier = Modifier.size(24.dp)
-                ) {
-                    Icon(
-                        Icons.Default.Close,
-                        contentDescription = "Ukloni",
-                        modifier = Modifier.size(16.dp)
-                    )
-                }*/
-            }
 
-            if (fish.photo.isNotEmpty()) {
+        Row(
+            modifier = Modifier
+                .padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+
+            if (fish.image.isNotEmpty()) {
                 AsyncImage(
-                    model = fish.photo,
+                    model = fish.image,
                     contentDescription = fish.name,
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(80.dp)
-                        .padding(top = 4.dp),
+                        .size(60.dp),
                     contentScale = ContentScale.Crop
+                )
+            }
+
+            Spacer(Modifier.width(12.dp))
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+
+                Text(
+                    text = fish.name,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Text(
+                    text = if (lastSeen == 0L)
+                        "Nije još viđena"
+                    else
+                        "Poslednji put viđena: ${formatDate(lastSeen)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+
+            IconButton(
+                onClick = {
+                    seenClicked = !seenClicked
+                    if(seenClicked){
+                        CoroutineScope(Dispatchers.Main).launch {
+                            delay(5000)
+                            if (seenClicked) {
+                                onSeenClick()
+                            }
+                        }
+                    }
+                }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Visibility,
+                    contentDescription = "Seen",
+                    tint = if (seenClicked)
+                        MaterialTheme.colorScheme.primary
+                    else
+                        MaterialTheme.colorScheme.onSurface
                 )
             }
         }

@@ -61,7 +61,8 @@ suspend fun uploadLocationImage(context: Context, imageUri: Uri): String {//🐛
     }
 }
 
-fun formatTimestamp(timestamp: Long): String {//🐛ovo treba da se koristi ali ne znam da li ga koristim
+//🐛ovo VALJDA IMAM IDENTICNO U DATEFOMRAT - AKO DA ONDA OBRISI OVU A AKO NIJE ISTA DODAJ OVU U POSEBNU KLASU ILI U TU DATEFORMAT NEKOJ OVDE DA STOJI
+fun formatTimestamp(timestamp: Long): String {
     val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
     return dateFormat.format(Date(timestamp))
 }
@@ -76,7 +77,6 @@ fun setupLocationUpdates(
         fastestInterval = 2000
         priority = LocationRequest.PRIORITY_HIGH_ACCURACY
     }
-
     fusedLocationProvider.requestLocationUpdates(
         locationRequest,
         locationCallback,
@@ -84,7 +84,7 @@ fun setupLocationUpdates(
     )
 }
 
-
+//🐛 PROMENI OPIS DA BUDE NA SPRSKOM:
 // Function to mock user location (requires Location Edit app or another mock location app)
 // Function to mock user location using Loca Edit app
 fun mockUserLocation(context: Context, position: LatLng) {
@@ -97,7 +97,6 @@ fun mockUserLocation(context: Context, position: LatLng) {
 
         // Try to send the intent
         context.sendBroadcast(intent)
-
         /*Toast.makeText(
             context,
             "Lokacija postavljena na: ${position.latitude}, ${position.longitude}",

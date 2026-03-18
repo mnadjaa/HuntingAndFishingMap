@@ -13,17 +13,22 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import rmas.proj.projekat.data.Fish
 import rmas.proj.projekat.data.FishRepository
+import rmas.proj.projekat.data.FishSightingRepository
 
 
 class FishViewModel(
-    private val fishRepository: FishRepository = FishRepository()
+    private val fishRepository: FishRepository = FishRepository(),
+    private val fishSightingRepository: FishSightingRepository = FishSightingRepository()
 ) : ViewModel() {
 
     private val _fishData = MutableStateFlow<Map<String, Fish>>(emptyMap())
     val fishData: StateFlow<Map<String, Fish>> = _fishData.asStateFlow()
 
-    private val _selectedImageUri = MutableStateFlow<Uri?>(null)
-    val selectedImageUri: StateFlow<Uri?> = _selectedImageUri.asStateFlow()
+   /* private val _selectedImageUri = MutableStateFlow<Uri?>(null)
+    val selectedImageUri: StateFlow<Uri?> = _selectedImageUri.asStateFlow()*/
+
+    private val _locationSightings = MutableStateFlow<Map<String, Long>>(emptyMap())
+    val locationSightings: StateFlow<Map<String, Long>> = _locationSightings.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -31,11 +36,11 @@ class FishViewModel(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
-    fun updateSelectedImage(uri: Uri?) {
+    /*fun updateSelectedImage(uri: Uri?) {
         _selectedImageUri.value = uri
-    }
+    }*/
 
-    fun loadFishData(fishId: String) {
+    /*fun loadFishData(fishId: String) {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
@@ -52,9 +57,9 @@ class FishViewModel(
 
             _isLoading.value = false
         }
-    }
+    }*/
 
-    fun loadFishesByAuthor(authorId: String) {
+    /*fun loadFishesByAuthor(authorId: String) {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
@@ -72,7 +77,7 @@ class FishViewModel(
 
             _isLoading.value = false
         }
-    }
+    }*/
 
     fun loadAllFishes() {
         viewModelScope.launch {
@@ -93,8 +98,34 @@ class FishViewModel(
             _isLoading.value = false
         }
     }
+    fun updateLastSeen(fishId: String, locationId:String) {
+        viewModelScope.launch {
+            fishSightingRepository.updateLastSeen(fishId,locationId)
+        }
+    }
+    fun loadSightingsForLocation(locationId: String) {
+        viewModelScope.launch {
+            fishSightingRepository.getSightingsForLocation(locationId)
+                .onSuccess { sightings ->
 
-    fun createFish(fish: Fish, context: Context) {
+                    val map = sightings.associate {
+                        it.fishId to it.lastSeen
+                    }
+
+                    _locationSightings.value = map
+                }
+
+                .onFailure {
+                    Log.e("FishViewModel", "Error loading sightings", it)
+                }
+        }
+    }
+
+    fun clearError() {
+        _error.value = null
+    }
+
+    /*fun createFish(fish: Fish, context: Context) {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
@@ -149,17 +180,14 @@ class FishViewModel(
 
             _isLoading.value = false
         }
-    }
+    }*/
 
-    fun clearError() {
-        _error.value = null
-    }
 
-    fun selectImage(context: Context) {
-        val pickImageLauncher =
-            (context as? ComponentActivity)?.registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-                uri?.let { updateSelectedImage(it) }
-            }
-        pickImageLauncher?.launch("image/*")
-    }
+//    fun selectImage(context: Context) {
+//        val pickImageLauncher =
+//            (context as? ComponentActivity)?.registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+//                uri?.let { updateSelectedImage(it) }
+//            }
+//        pickImageLauncher?.launch("image/*")
+//    }
 }

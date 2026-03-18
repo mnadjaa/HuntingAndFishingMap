@@ -39,7 +39,6 @@ class LocationRepository {
             photos = location.photos,
             createdAt =timestamp,// System.currentTimeMillis(),
             lastInteraction = timestamp//System.currentTimeMillis()
-            //da li treba i ovde da dodam animalids i fishids 🦋
         )
 
         // konertuje lokaciju u hashmap za firestore
@@ -66,7 +65,6 @@ class LocationRepository {
             },
             "createdAt" to locationWithId.createdAt,
             "lastInteraction" to locationWithId.lastInteraction
-            //da li treba da dodam animalids i fishids🦋
         )
         // Save to Firestore
         locationDoc.set(locationData).await()

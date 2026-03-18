@@ -227,7 +227,7 @@
                     ServiceControlScreen(context = context)
                 }
                 composable("search") {
-                    SearchScreen(navController)
+                    SearchScreen(navController=navController, locationViewModel = locationViewModel)
                 }
             }
         }

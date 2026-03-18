@@ -66,19 +66,12 @@ fun AnimalsScreen(
     val animalsData by animalViewModel.animalsData.collectAsState()
     val isLoading by animalViewModel.isLoading.collectAsState()
     val error by animalViewModel.error.collectAsState()
-
     var searchQuery by remember { mutableStateOf("") }
-   //var selectedAnimals by remember { mutableStateOf(setOf<String>()) }
-
     val selectedAnimalsFromVM by locationViewModel.selectedAnimals.collectAsState()
     val selectedIds = remember(selectedAnimalsFromVM) {
         selectedAnimalsFromVM.map { it.id }.toSet()
     }
-
-    //val scope = rememberCoroutineScope()
-    //val locationsLoaded by locationViewModel.locations.collectAsState()
     var isFiltering by remember { mutableStateOf(false) }
-
 
     LaunchedEffect(Unit) {
         animalViewModel.loadAllAnimals()
@@ -94,7 +87,6 @@ fun AnimalsScreen(
                     CircularProgressIndicator()
                 }
             }
-
             error != null -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
@@ -103,27 +95,22 @@ fun AnimalsScreen(
                     )
                 }
             }
-
             else -> {
                 val filteredAnimals = animalsData.values.filter {
                     it.name.contains(searchQuery, ignoreCase = true)
                 }
-
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(16.dp)
                 ) {
-
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
                         label = { Text("Pretraži životinje") },
                         modifier = Modifier.fillMaxWidth()
                     )
-
                     Spacer(modifier = Modifier.height(12.dp))
-
                     LazyColumn(
                         modifier = Modifier.weight(1f)
                     ) {
@@ -137,9 +124,7 @@ fun AnimalsScreen(
                             )
                         }
                     }
-
                     Spacer(modifier = Modifier.height(12.dp))
-
 
                     Button(
                         modifier = Modifier.fillMaxWidth(),
@@ -223,9 +208,9 @@ fun AnimalItem(
                 Text(text = animal.description, style = MaterialTheme.typography.bodySmall)
             }
 
-            if (animal.photo.isNotEmpty()) {
+            if (animal.image.isNotEmpty()) {
                 AsyncImage(
-                    model = animal.photo,
+                    model = animal.image,
                     contentDescription = null,
                     modifier = Modifier
                         .size(56.dp)
