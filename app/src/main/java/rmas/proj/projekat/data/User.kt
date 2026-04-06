@@ -21,7 +21,6 @@ data class User(
     val phoneNumber: String = "",
     val profilePicture: String = ""          // URL slike korisnika (sačuvane u cloudinary)
 )
-
 class UserRepository {
     private val db = FirebaseFirestore.getInstance()
     private val usersCollection = db.collection("users")
@@ -54,7 +53,6 @@ class UserRepository {
             Result.failure(e)
         }
     }
-
     suspend fun createUser(user: User): Result<User> {
         return try {
             val documentRef = usersCollection.document()
@@ -71,7 +69,6 @@ class UserRepository {
             Result.failure(e)
         }
     }
-
     suspend fun updateUser(user: User): Result<User> {
         return try {
             usersCollection.document(user.id).set(user).await()

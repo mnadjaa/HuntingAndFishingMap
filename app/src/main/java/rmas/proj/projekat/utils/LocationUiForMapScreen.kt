@@ -59,10 +59,10 @@ import kotlinx.coroutines.launch
 import rmas.proj.projekat.data.Location
 import rmas.proj.projekat.data.LocationType
 import rmas.proj.projekat.data.Rating
+import rmas.proj.projekat.data.SpeciesType
 import rmas.proj.projekat.viewmodel.LocationViewModel
 import rmas.proj.projekat.viewmodel.UserViewModel
-import rmas.proj.projekat.viewmodel.AnimalViewModel
-import rmas.proj.projekat.viewmodel.FishViewModel
+import rmas.proj.projekat.viewmodel.SpeciesViewModel
 
 @Composable
 fun LocationDetailsDialog( //prikazuje sve informacije o selektovanoj lokaciji
@@ -79,9 +79,7 @@ fun LocationDetailsDialog( //prikazuje sve informacije o selektovanoj lokaciji
     var comment by remember { mutableStateOf("") }
     var showAddRatingDialog by remember { mutableStateOf(false) }
     val userViewModel: UserViewModel = viewModel()
-    val animalViewModel: AnimalViewModel = viewModel()
-    val fishViewModel: FishViewModel = viewModel()
-    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+    val speciesViewModel: SpeciesViewModel = viewModel()
     val scope = rememberCoroutineScope()
     val selectedImageUri by viewModel.selectedImageUri.collectAsState()
     val animalsAtLocation by viewModel.animalsAtLocation.collectAsState()
@@ -92,8 +90,7 @@ fun LocationDetailsDialog( //prikazuje sve informacije o selektovanoj lokaciji
     var showAddFishDialog by remember { mutableStateOf(false) }
     var showRatings by remember { mutableStateOf(false) }
     val existingRating = location.ratings.find { it.userId == currentUserId }    //za ulogovanog korisnika
-    val animal_sightings by animalViewModel.locationSightings.collectAsState()
-    val fish_sightings by fishViewModel.locationSightings.collectAsState()
+    val sightings by speciesViewModel.locationSightings.collectAsState()
 
     LaunchedEffect(Unit) {
         // Clear any previously selected image when opening the dialog
@@ -101,13 +98,10 @@ fun LocationDetailsDialog( //prikazuje sve informacije o selektovanoj lokaciji
         // Ucitaj detalje lokacije sa zivotinjama/ribama
         viewModel.loadLocationDetails(location.id)
     }
-    //ucitava vidjenja za odredjenu lokaciju
     LaunchedEffect(location.id) {
-        animalViewModel.loadSightingsForLocation(location.id)
+        speciesViewModel.loadSightingsForLocation(location.id)
     }
-    LaunchedEffect(location.id) {
-        fishViewModel.loadSightingsForLocation(location.id)
-    }
+
     Log.d("DEBUG", "Lokacija otvorena u dialogu: ${location.photos}")
 
     val launcher = rememberLauncherForActivityResult(
@@ -195,11 +189,12 @@ fun LocationDetailsDialog( //prikazuje sve informacije o selektovanoj lokaciji
                             modifier = Modifier.padding(vertical = 8.dp)
                         )
                     } else {
-                        AnimalsSection(
-                            animals = animalsAtLocation,
-                            sightings = animal_sightings,
-                            onSeenClick = { animal ->
-                                animalViewModel.updateLastSeen(animal.id, location.id)
+                        SpeciesSection(
+                            speciesList = animalsAtLocation,
+                            sightings = sightings,
+                            title = "Životinje na lokaciji",
+                            onSeenClick = { speciesId ->
+                                speciesViewModel.updateLastSeen(speciesId, location.id)
                             }
                         )
                     }
@@ -230,11 +225,12 @@ fun LocationDetailsDialog( //prikazuje sve informacije o selektovanoj lokaciji
                             modifier = Modifier.padding(vertical = 8.dp)
                         )
                     } else {
-                        FishesSection(
-                            fishes = fishAtLocation,
-                            sightings = fish_sightings,
-                            onSeenClick = { fish ->
-                                fishViewModel.updateLastSeen(fish.id, location.id)
+                        SpeciesSection(
+                            speciesList = fishAtLocation,
+                            sightings = sightings,
+                            title = "Ribe na lokaciji",
+                            onSeenClick = { speciesId ->
+                                speciesViewModel.updateLastSeen(speciesId, location.id)
                             }
                         )
                     }
@@ -445,24 +441,26 @@ fun LocationDetailsDialog( //prikazuje sve informacije o selektovanoj lokaciji
             }
         }
     }
-    //DODAAVNJE ZIVOTINJA I RIBA NA LOKACIJU
+
     if (showAddAnimalDialog) {
-        AddAnimalToLocationDialog(
-            availableAnimals = availableAnimals,
+        AddSpeciesToLocationDialog(
+            availableSpecies = availableAnimals,
+            title = "Izaberi životinju",
             onDismiss = { showAddAnimalDialog = false },
-            onAnimalSelected = { animalId ->
-                viewModel.addAnimalToLocation(location.id, animalId)
+            onSpeciesSelected = { speciesId ->
+                viewModel.addSpeciesToLocation(location.id, speciesId, SpeciesType.ANIMAL)
                 showAddAnimalDialog = false
             }
         )
     }
 
     if (showAddFishDialog) {
-        AddFishToLocationDialog(
-            availableFish = availableFish,
+        AddSpeciesToLocationDialog(
+            availableSpecies = availableFish,
+            title = "Izaberi ribu",
             onDismiss = { showAddFishDialog = false },
-            onFishSelected = { fishId ->
-                viewModel.addFishToLocation(location.id, fishId)
+            onSpeciesSelected = { speciesId ->
+                viewModel.addSpeciesToLocation(location.id, speciesId, SpeciesType.FISH)
                 showAddFishDialog = false
             }
         )

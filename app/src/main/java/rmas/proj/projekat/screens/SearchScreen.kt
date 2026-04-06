@@ -30,9 +30,23 @@ fun SearchScreen(
     locationViewModel: LocationViewModel
 )
 {
+    val selectedAnimals by locationViewModel.selectedAnimals.collectAsState()
+    val selectedFishes by locationViewModel.selectedFishes.collectAsState()
     val selectedType by locationViewModel.selectedLocationType.collectAsState()
     val selectedMaxDistance by locationViewModel.selectedMaxDistance.collectAsState()
+    val selectedPeriod by locationViewModel.selectedLastSeenPeriod.collectAsState()
     val distanceOptions = listOf(5.0, 10.0, 25.0, 50.0, 100.0)
+    val periodOptions = listOf(
+        "Danas" to (24 * 60 * 60 * 1000L),
+        "Ova nedelja" to (7 * 24 * 60 * 60 * 1000L),
+        "Ovaj mesec" to (30L * 24 * 60 * 60 * 1000L),
+        "Ova godina" to (365L * 24 * 60 * 60 * 1000L)
+)
+    val anyFilterActive = selectedType != null
+            || selectedMaxDistance != null
+            || selectedPeriod != null
+            || selectedAnimals.isNotEmpty()
+            || selectedFishes.isNotEmpty()
 
     Column(
         modifier = Modifier
@@ -95,7 +109,9 @@ fun SearchScreen(
 
         Button(
             modifier = Modifier.fillMaxWidth(),
-            onClick = { navController.navigate("animals") }
+            onClick = { navController.navigate("animals") {
+                launchSingleTop = true
+            } }
         ) {
             Icon(Icons.Default.Pets, contentDescription = null)
             Spacer(Modifier.width(8.dp))
@@ -106,7 +122,9 @@ fun SearchScreen(
 
         Button(
             modifier = Modifier.fillMaxWidth(),
-            onClick = { navController.navigate("fishes") }
+            onClick = { navController.navigate("fishes"){
+                launchSingleTop = true
+            } }
         ) {
             Icon(Icons.Default.Water, contentDescription = null)
             Spacer(Modifier.width(8.dp))
@@ -147,19 +165,51 @@ fun SearchScreen(
                 }
             }
         }
-        //kraj
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text("Filter po poslednjem viđanju",
+            style = MaterialTheme.typography.labelLarge,
+            modifier = Modifier.align(Alignment.Start)
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        periodOptions.forEach { (label, ms) ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        val newPeriod = if (selectedPeriod == ms) null else ms
+                        locationViewModel.setLastSeenPeriod(newPeriod)
+                    }
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                RadioButton(selected = selectedPeriod == ms, onClick = {
+                    val newPeriod = if (selectedPeriod == ms) null else ms
+                    locationViewModel.setLastSeenPeriod(newPeriod)
+                })
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(label)
+            }
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
 
         Button(
             modifier = Modifier.fillMaxWidth(),
-            enabled = selectedType != null || selectedMaxDistance != null ,
-            onClick = { navController.navigate("map") }
+            enabled = anyFilterActive,
+            onClick = { navController.navigate("map")
+            {
+                popUpTo("map") { inclusive = false }
+                launchSingleTop = true
+            }}
+
         ) {
             Text("Vidi na mapi")
         }
 
-        if (selectedType != null || selectedMaxDistance != null) {
+        if (anyFilterActive) {
             TextButton(
                 onClick = { locationViewModel.clearAllFilters() },
                 modifier = Modifier.fillMaxWidth()

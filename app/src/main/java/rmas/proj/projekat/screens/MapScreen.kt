@@ -116,8 +116,8 @@ fun MapScreen(
     var showMain by remember { mutableStateOf(false) }
     var isNavigationRailVisible by remember { mutableStateOf(false) }
 
-    //📌
-    val isManuallyControlling by viewModel.isManuallyControlling.collectAsState()
+    //📌  //da li ovo da opbrisem 🚮
+    //val isManuallyControlling by viewModel.isManuallyControlling.collectAsState()
 
     // Remember location callback
     val locationCallback = remember {
@@ -130,10 +130,12 @@ fun MapScreen(
                     viewModel.setUserLocation(latLng)  //🛤️
 
                     // updateuje se pozicija ako nije ukljuceno manuallycontrolling
+                    // //da li ovo da opbrisem
+                    /*
                     if (!isManuallyControlling) {
                         viewModel.updatePosition(latLng)
                         characterMarkerState.value = MarkerState(position = latLng)
-                    }
+                    }*/
                 }
             }
         }
@@ -252,6 +254,8 @@ fun MapScreen(
                     }
 
                     //pokretni marker strelice za pomeranje
+                    //ovo brisem 🚮
+                    /*
                     characterPosition?.let { position ->
                         Box(
                             modifier = Modifier
@@ -336,6 +340,12 @@ fun MapScreen(
                             }
                         }
                     }
+
+
+                    */
+
+
+
                 }
             }
 
@@ -410,8 +420,7 @@ fun AddLocationDialog(
                         .height(200.dp)
                         .background(MaterialTheme.colorScheme.surfaceVariant)
                         .clickable { launcher.launch("image/*") },
-
-                    contentAlignment = Alignment.Center  // Ovo je ispravna opcija za centriranje
+                    contentAlignment = Alignment.Center
                 ) {
                     if (selectedImageUri != null) {
                         AsyncImage(

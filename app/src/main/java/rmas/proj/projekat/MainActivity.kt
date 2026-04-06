@@ -42,17 +42,15 @@
     import androidx.compose.material.icons.filled.Map
     import androidx.lifecycle.viewmodel.compose.viewModel
     import rmas.proj.projekat.screens.SearchScreen
-    import rmas.proj.projekat.viewmodel.AnimalViewModel
-    import rmas.proj.projekat.viewmodel.FishViewModel
     import rmas.proj.projekat.viewmodel.LocationViewModel
+    import rmas.proj.projekat.viewmodel.SpeciesViewModel
 
-    //NIJE MI VALJDA DOBRO TO STO SE PAMTI CELA ISTORIJA EKRANA VALJDA NE TREBA? MOZDA I TREBA PROVERI 🐛
+    //koristila sam drugaciju logiku za stek ekrana nego na prezentaciji - launch single top - samo skapiraj🐛
     class MainActivity : ComponentActivity() {
         private lateinit var auth: FirebaseAuth
         private val registerViewModel: RegisterViewModel by viewModels()//cuva stanje vezano za registraciju
         private val locationViewModel: LocationViewModel by viewModels()
-        private val animalViewModel: AnimalViewModel by viewModels()
-        private val fishViewModel: FishViewModel by viewModels()
+        private val speciesViewModel: SpeciesViewModel by viewModels()
         private val pickImageLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? -> //activity resault launcher za izbor slika iz galerije
             uri?.let { imageUri ->
                 registerViewModel.updateSelectedImage(imageUri)
@@ -71,8 +69,7 @@
                 AppNavigation(
                     registerViewModel = registerViewModel,
                     locationViewModel = locationViewModel,
-                    animalViewModel= animalViewModel,
-                    fishViewModel=fishViewModel,
+                    speciesViewModel = speciesViewModel,
                     onImageSelect = {
                         pickImageLauncher.launch("image/*")
                     }
@@ -84,8 +81,7 @@
     fun AppNavigation(
         registerViewModel: RegisterViewModel,
         locationViewModel: LocationViewModel,
-        animalViewModel: AnimalViewModel,
-        fishViewModel:FishViewModel,
+        speciesViewModel: SpeciesViewModel,
         onImageSelect: () -> Unit
     ) {
         val navController = rememberNavController()
@@ -148,8 +144,7 @@
             MainScreenWithNavigation(
                 navController = navController,
                 locationViewModel = locationViewModel,
-                animalViewModel=animalViewModel,
-                fishViewModel=fishViewModel,
+                speciesViewModel = speciesViewModel,
                 onLogout = { isLoggedIn = false }  // Callback za logout
             )
         }
@@ -158,8 +153,7 @@
     fun MainScreenWithNavigation(
         navController: NavHostController,
         locationViewModel: LocationViewModel,
-        animalViewModel:AnimalViewModel,
-        fishViewModel: FishViewModel,
+        speciesViewModel: SpeciesViewModel,
         onLogout: () -> Unit
         ) {
         Scaffold(
@@ -169,37 +163,66 @@
                         icon = { Icon(Icons.Default.Search, contentDescription = "Pretraga") },
                         label = { Text("Pretraga") },
                         selected = false,
-                        onClick = { navController.navigate("search") }
+                        onClick = {
+                            navController.navigate("search") {
+                                popUpTo("map") { inclusive = false }
+                                launchSingleTop = true
+                            }
+                        }
+                        //onClick = { navController.navigate("search") }
                     )
                     NavigationBarItem(
                         icon = { Icon(Icons.Default.Map, contentDescription = "Mapa") },
                         label = { Text("Mapa") },
                         selected = false,
-                        onClick = {  navController.navigate("map")}
+                        onClick = {
+                            navController.navigate("map") {
+                                popUpTo("map") { inclusive = false }
+                                launchSingleTop = true
+                            }
+                        }
+                        //onClick = {  navController.navigate("map")}
                     )
                     NavigationBarItem(
                         icon = { Icon(Icons.Default.Person, contentDescription = "User Profile") },
                         label = { Text("Moj profil") },
                         selected = navController.currentDestination?.route == "profile",
-                        onClick = { navController.navigate("profile") }
+                        onClick = {
+                            navController.navigate("profile") {
+                                popUpTo("map") { inclusive = false }
+                                launchSingleTop = true
+                            }
+                        }
+                        //onClick = { navController.navigate("profile") }
                     )
 
                     NavigationBarItem(
                         icon = { Icon(Icons.Default.People, contentDescription = "Users") },
                         label = { Text("Korisnici") },
                         selected = navController.currentDestination?.route == "users",
-                        onClick = { navController.navigate("users") }
+                        //onClick = { navController.navigate("users") }
+                        onClick = {
+                            navController.navigate("users") {
+                                popUpTo("map") { inclusive = false }
+                                launchSingleTop = true
+                            }
+                        }
                     )
                     NavigationBarItem(
                         icon = { Icon(Icons.Default.Settings, contentDescription = "Service Control") },
                         label = { Text("Servisi") },
                         selected = navController.currentDestination?.route == "service_control",
-                        onClick = { navController.navigate("service_control") }
+                        onClick = {
+                            navController.navigate("service_control") {
+                                popUpTo("map") { inclusive = false }
+                                launchSingleTop = true
+                            }
+                        }
+                        //onClick = { navController.navigate("service_control") }
                     )
                 }
             }
         ) { innerPadding ->
-            // Sadržaj ekrana
             NavHost(
                 navController = navController,
                 startDestination = "map",
@@ -217,10 +240,10 @@
                     UsersScreen()
                 }
                 composable("animals") {
-                    AnimalsScreen(animalViewModel = animalViewModel, navController=navController, locationViewModel = locationViewModel)
+                    AnimalsScreen(speciesViewModel = speciesViewModel, navController=navController, locationViewModel = locationViewModel)
                 }
                 composable("fishes") {
-                    FishesScreen(fishViewModel=fishViewModel, navController=navController, locationViewModel=locationViewModel)
+                    FishesScreen(speciesViewModel = speciesViewModel, navController=navController, locationViewModel=locationViewModel)
                 }
                 composable("service_control") {
                     val context = LocalContext.current
