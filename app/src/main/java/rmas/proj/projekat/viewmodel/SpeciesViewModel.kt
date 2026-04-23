@@ -3,6 +3,7 @@ package rmas.proj.projekat.viewmodel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -14,11 +15,13 @@ import rmas.proj.projekat.data.FishRepository
 import rmas.proj.projekat.data.SightingRepository
 import rmas.proj.projekat.data.Species
 import rmas.proj.projekat.data.SpeciesType
+import rmas.proj.projekat.data.UserRepository
 
 class SpeciesViewModel(
     private val animalRepository: AnimalRepository = AnimalRepository(),
     private val fishRepository: FishRepository = FishRepository(),
-    private val sightingRepository: SightingRepository = SightingRepository()
+    private val sightingRepository: SightingRepository = SightingRepository(),
+    private val userRepository: UserRepository = UserRepository()
 ) : ViewModel() {
     private val _locationSightings = MutableStateFlow<Map<String, Long>>(emptyMap())
     val locationSightings: StateFlow<Map<String, Long>> = _locationSightings.asStateFlow()
@@ -69,10 +72,12 @@ class SpeciesViewModel(
         locationId: String
     ) {
         viewModelScope.launch {
+            val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
             sightingRepository.updateLastSeen(
                 speciesId,
                 locationId
-            )
+            ).onSuccess {userRepository.addPoints(currentUserId, 1)
+                }
         }
     }
 

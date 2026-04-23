@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.firestore.DocumentId
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,18 +16,17 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
 data class User(
-    @DocumentId var id: String = "",          // Ovaj ID je automatski dodeljen od strane Firestore-a
+    @DocumentId var id: String = "",
     val firstName: String = "",
     val lastName: String = "",
     val phoneNumber: String = "",
-    val profilePicture: String = ""          // URL slike korisnika (sačuvane u cloudinary)
+    val profilePicture: String = "",        // URL slike korisnika (sasuvane u cloudinary)
+    val points: Int = 0
 )
 class UserRepository {
     private val db = FirebaseFirestore.getInstance()
     private val usersCollection = db.collection("users")
-
     private val _users = MutableStateFlow<Map<String, User>>(emptyMap())
-    val users: Flow<Map<String, User>> = _users.asStateFlow()
 
     suspend fun getUserById(userId: String): Result<User> {
         return try {
@@ -36,7 +36,6 @@ class UserRepository {
             if (document.exists()) {
                 val user = document.toObject(User::class.java)
                 if (user != null) {
-                    // Update the internal state
                     _users.value = _users.value + (userId to user)
                     Log.d(TAG, "Successfully fetched user: ${user.firstName} ${user.lastName}")
                     Result.success(user)
@@ -59,7 +58,6 @@ class UserRepository {
             val userWithId = user.copy(id = documentRef.id)
             documentRef.set(userWithId).await()
 
-            // Update the internal state
             _users.value = _users.value + (userWithId.id to userWithId)
             Log.d(TAG, "Successfully created user with ID: ${userWithId.id}")
 
@@ -72,8 +70,6 @@ class UserRepository {
     suspend fun updateUser(user: User): Result<User> {
         return try {
             usersCollection.document(user.id).set(user).await()
-
-            // Update the internal state
             _users.value = _users.value + (user.id to user)
             Log.d(TAG, "Successfully updated user with ID: ${user.id}")
 
@@ -87,8 +83,6 @@ class UserRepository {
     suspend fun deleteUser(userId: String): Result<Unit> {
         return try {
             usersCollection.document(userId).delete().await()
-
-            // Update the internal state
             _users.value = _users.value - userId
             Log.d(TAG, "Successfully deleted user with ID: $userId")
 
@@ -101,4 +95,25 @@ class UserRepository {
     companion object {
         private const val TAG = "UserRepository"
     }
+
+    suspend fun addPoints(userId: String, points: Int): Result<Unit> {
+        return try {
+            usersCollection.document(userId)
+                .update("points", FieldValue.increment(points.toLong()))
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    suspend fun getAllUsers(): Result<List<User>> {
+        return try {
+            val snapshot = usersCollection.get().await()
+            val users = snapshot.documents.mapNotNull { it.toObject(User::class.java) }
+            Result.success(users)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
 }

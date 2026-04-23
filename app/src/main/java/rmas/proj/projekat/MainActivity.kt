@@ -1,12 +1,13 @@
     package rmas.proj.projekat
 
+    import android.content.pm.PackageManager
     import android.net.Uri
+    import android.os.Build
     import android.os.Bundle
     import androidx.activity.ComponentActivity
     import androidx.activity.compose.setContent
     import androidx.activity.result.contract.ActivityResultContracts
     import androidx.activity.viewModels
-    import androidx.compose.foundation.layout.Row
     import androidx.compose.material3.NavigationBar
     import androidx.compose.material3.NavigationBarItem
     import androidx.compose.material3.Scaffold
@@ -17,7 +18,6 @@
     import androidx.compose.ui.platform.LocalContext
     import androidx.navigation.NavHostController
     import com.google.firebase.FirebaseApp
-    import rmas.proj.projekat.viewmodel.UserViewModel
     import androidx.navigation.compose.*
     import rmas.proj.projekat.screens.LoginScreen
     import rmas.proj.projekat.screens.RegisterScreen
@@ -28,6 +28,7 @@
     import rmas.proj.projekat.screens.FishesScreen
     import rmas.proj.projekat.screens.MapScreen
     import rmas.proj.projekat.screens.ServiceControlScreen
+    import rmas.proj.projekat.screens.AuthorsScreen
     import androidx.compose.material.icons.Icons
     import androidx.compose.material.icons.filled.People
     import androidx.compose.material.icons.filled.Person
@@ -40,27 +41,42 @@
     import androidx.compose.foundation.layout.fillMaxSize
     import androidx.compose.foundation.layout.padding
     import androidx.compose.material.icons.filled.Map
-    import androidx.lifecycle.viewmodel.compose.viewModel
     import rmas.proj.projekat.screens.SearchScreen
     import rmas.proj.projekat.viewmodel.LocationViewModel
     import rmas.proj.projekat.viewmodel.SpeciesViewModel
+    import rmas.proj.projekat.viewmodel.UserViewModel
 
-    //koristila sam drugaciju logiku za stek ekrana nego na prezentaciji - launch single top - samo skapiraj🐛
+    //koristila sam drugaciju logiku za stek ekrana nego na prezentaciji - launch single top - ako je vec na vrhu steka ne treba opet da se dodaje, popupto brise sve stare ekrane do tog koji se navede
     class MainActivity : ComponentActivity() {
         private lateinit var auth: FirebaseAuth
         private val registerViewModel: RegisterViewModel by viewModels()//cuva stanje vezano za registraciju
         private val locationViewModel: LocationViewModel by viewModels()
         private val speciesViewModel: SpeciesViewModel by viewModels()
+        private val userViewModel: UserViewModel by viewModels()
         private val pickImageLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? -> //activity resault launcher za izbor slika iz galerije
             uri?.let { imageUri ->
                 registerViewModel.updateSelectedImage(imageUri)
             }
         }
+
         override fun onCreate(savedInstanceState: Bundle?) {
             super.onCreate(savedInstanceState)
             auth = FirebaseAuth.getInstance()
             FirebaseApp.initializeApp(this)
             val user = FirebaseAuth.getInstance().currentUser
+
+            // trazi dozvolu od aplikacije za obavestenja
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED
+                ) {
+                    requestPermissions(
+                        arrayOf(android.Manifest.permission.POST_NOTIFICATIONS),
+                        1001
+                    )
+                }
+            }
+
 
             setContent {//compose fja koja prikazuje ui
                 val navController = rememberNavController()
@@ -70,6 +86,7 @@
                     registerViewModel = registerViewModel,
                     locationViewModel = locationViewModel,
                     speciesViewModel = speciesViewModel,
+                    userViewModel= userViewModel,
                     onImageSelect = {
                         pickImageLauncher.launch("image/*")
                     }
@@ -82,6 +99,7 @@
         registerViewModel: RegisterViewModel,
         locationViewModel: LocationViewModel,
         speciesViewModel: SpeciesViewModel,
+        userViewModel: UserViewModel,
         onImageSelect: () -> Unit
     ) {
         val navController = rememberNavController()
@@ -140,11 +158,12 @@
                 }
             }
         }
-        else{//ako je ulogovan pokazuje navbar
+        else{//ako je ulogovan pokazuje mainscreen
             MainScreenWithNavigation(
                 navController = navController,
                 locationViewModel = locationViewModel,
                 speciesViewModel = speciesViewModel,
+                userViewModel=userViewModel,
                 onLogout = { isLoggedIn = false }  // Callback za logout
             )
         }
@@ -154,6 +173,7 @@
         navController: NavHostController,
         locationViewModel: LocationViewModel,
         speciesViewModel: SpeciesViewModel,
+        userViewModel: UserViewModel,
         onLogout: () -> Unit
         ) {
         Scaffold(
@@ -165,7 +185,7 @@
                         selected = false,
                         onClick = {
                             navController.navigate("search") {
-                                popUpTo("map") { inclusive = false }
+                                popUpTo("map") { inclusive = false } //brise sve pre map, samo map ostaje
                                 launchSingleTop = true
                             }
                         }
@@ -237,7 +257,7 @@
                     UserProfileScreen(navController=navController,onLogout=onLogout)
                 }
                 composable("users") {
-                    UsersScreen()
+                    UsersScreen(navController = navController, userViewModel = userViewModel)
                 }
                 composable("animals") {
                     AnimalsScreen(speciesViewModel = speciesViewModel, navController=navController, locationViewModel = locationViewModel)
@@ -251,6 +271,13 @@
                 }
                 composable("search") {
                     SearchScreen(navController=navController, locationViewModel = locationViewModel)
+                }
+                composable("authors") {
+                    AuthorsScreen(
+                        userViewModel = userViewModel,
+                        locationViewModel = locationViewModel,
+                        navController = navController
+                    )
                 }
             }
         }

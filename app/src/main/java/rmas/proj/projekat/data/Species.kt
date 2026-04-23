@@ -13,7 +13,7 @@ interface Species {
     val locationIds: List<String>
 }
 
-class SpeciesRepository<T : Species>(
+class SpeciesRepository<T : Species>( //gen klasa radi sa tipom t koji mora da bude podklasa species klase tj inta
     private val collectionName: String,
     private val clazz: Class<T>
 ) {

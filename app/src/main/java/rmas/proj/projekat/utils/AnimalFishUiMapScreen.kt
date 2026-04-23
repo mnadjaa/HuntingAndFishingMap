@@ -46,7 +46,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 
-// Dijalog za izbor zivotinja i riba
+// dijalog za dodavanje zivotinja i riba
 @Composable
 fun AddSpeciesToLocationDialog(
     availableSpecies: List<Any>, // Animal ili Fish

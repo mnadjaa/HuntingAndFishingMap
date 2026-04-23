@@ -73,7 +73,7 @@ fun RegisterScreen(
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Profile Image Selection
+        // odabir profilne slike
         Box(
             modifier = Modifier
                 .size(120.dp)
@@ -106,7 +106,6 @@ fun RegisterScreen(
             onValueChange = { username = it },
             label = { Text("Korisničko ime (Email)") },
             isError = isError && username.isEmpty(),
-            //textStyle = TextStyle(color = Color.White),
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -118,7 +117,6 @@ fun RegisterScreen(
             label = { Text("Lozinka") },
             visualTransformation = PasswordVisualTransformation(),
             isError = isError && password.isEmpty(),
-            //textStyle = TextStyle(color = Color.White),
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -129,7 +127,6 @@ fun RegisterScreen(
             onValueChange = { firstName = it },
             label = { Text("Ime") },
             isError = isError && firstName.isEmpty(),
-            //textStyle = TextStyle(color = Color.White),
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -140,7 +137,6 @@ fun RegisterScreen(
             onValueChange = { lastName = it },
             label = { Text("Prezime") },
             isError = isError && lastName.isEmpty(),
-            //textStyle = TextStyle(color = Color.White),
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -151,7 +147,6 @@ fun RegisterScreen(
             onValueChange = { phoneNumber = it },
             label = { Text("Telefon") },
             isError = isError && phoneNumber.isEmpty(),
-            //textStyle = TextStyle(color = Color.White),
             modifier = Modifier.fillMaxWidth(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
         )

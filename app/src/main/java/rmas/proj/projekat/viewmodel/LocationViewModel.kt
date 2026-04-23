@@ -26,22 +26,21 @@ import rmas.proj.projekat.data.Rating
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.core.app.ActivityCompat
+import com.google.firebase.auth.FirebaseAuth
 import rmas.proj.projekat.data.Animal
 import rmas.proj.projekat.data.AnimalRepository
 import rmas.proj.projekat.data.Fish
 import rmas.proj.projekat.data.FishRepository
-//import rmas.proj.projekat.data.AnimalSightingRepository
-import kotlinx.coroutines.flow.first
 import rmas.proj.projekat.data.SightingRepository
 import rmas.proj.projekat.data.SpeciesType
-
+import rmas.proj.projekat.data.UserRepository
 
 class LocationViewModel(
     private val locationRepository: LocationRepository = LocationRepository(),
     private val animalRepository: AnimalRepository= AnimalRepository(),
     private val fishRepository: FishRepository=FishRepository(),
-    private val sightingRepository: SightingRepository = SightingRepository()
-    //private val animalSightingRepository: AnimalSightingRepository = AnimalSightingRepository()
+    private val sightingRepository: SightingRepository = SightingRepository(),
+    private val userRepository: UserRepository = UserRepository()
 ) : ViewModel() {
     private val _isFilteringActive = MutableStateFlow(false)
     val isFilteringActive = _isFilteringActive.asStateFlow()
@@ -74,15 +73,8 @@ class LocationViewModel(
     val selectedMaxDistance: StateFlow<Double?> = _selectedMaxDistance.asStateFlow()
     private val _userLocation = MutableStateFlow<LatLng?>(null)
 
-    //📅
-    private val _selectedLastSeenPeriod = MutableStateFlow<Long?>(null) // u milisekundama
-    val selectedLastSeenPeriod: StateFlow<Long?> = _selectedLastSeenPeriod.asStateFlow()
-    fun setLastSeenPeriod(periodMs: Long?) {
-        _selectedLastSeenPeriod.value = periodMs
-        applyFilters()
-    }
-    //📅
-
+    private val _selectedAuthorId = MutableStateFlow<String?>(null)
+    val selectedAuthorId = _selectedAuthorId.asStateFlow()
     //----------------------------zivotinje i ribe--------------------------------------------------
     private val _allSightings = MutableStateFlow<Map<String, Map<String, Long>>>(emptyMap())
     private suspend fun loadAvailableSpecies(
@@ -187,9 +179,11 @@ class LocationViewModel(
     ) {
         viewModelScope.launch {
             _isLoadingDetails.value = true
+            val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
             locationRepository
                 .addSpeciesToLocation(locationId, speciesId, type)
                 .onSuccess {
+                    userRepository.addPoints(currentUserId, 2)
                     loadLocationDetails(locationId)
                 }
                 .onFailure {
@@ -200,19 +194,17 @@ class LocationViewModel(
     }
     init {
         loadAllLocations()
+        loadAllSightings()
     }
-    //-----------------pokretni marker--------------------------------------------------------------------------
+    //-----------------nas marker (msm da mogu da brisem jer nemam vise pokretni marker)--------------------------------------------------------------------------
     private val _characterPosition = MutableStateFlow<LatLng?>(null)
     var characterPosition by mutableStateOf<LatLng?>(null)
         private set
-    fun initializeCharacterPosition(position: LatLng) {//pokretni marker 🚮
+    fun initializeCharacterPosition(position: LatLng) {
         characterPosition = position
         _characterPosition.value = position
     }
-    fun updatePosition(newPosition: LatLng) {//pokretni marker 🚮
-        characterPosition = newPosition
-        _characterPosition.value = newPosition
-    }
+
     //------------------image-------------------------------------------------------------------------
     private val _selectedImageUri = MutableStateFlow<Uri?>(null)
     val selectedImageUri = _selectedImageUri.asStateFlow()
@@ -230,7 +222,7 @@ class LocationViewModel(
         }
         _selectedAnimals.value = currentSelected
 
-        // automatski azuriraj filtere cim se nesto promeni
+        // automatski azuriraj filtere cim se nesto selektuje ili deselektuje
         applyFilters()
         _isFilteringActive.value = _selectedAnimals.value.isNotEmpty() || _selectedFishes.value.isNotEmpty()
     }
@@ -243,9 +235,29 @@ class LocationViewModel(
         }
         _selectedFishes.value = currentSelected
 
-        // Automatski ažuriraj filtere čim se nešto promeni
+        // automatski se auzuriraju filteri ako se nesto selektuje
         applyFilters()
         _isFilteringActive.value = _selectedAnimals.value.isNotEmpty() || _selectedFishes.value.isNotEmpty()
+    }
+
+    fun toggleAuthorSelection(userId: String) {
+        val newAuthorId = if (_selectedAuthorId.value == userId) {
+            null // deselect ako je isti
+        } else {
+            userId // select novi
+        }
+
+        _selectedAuthorId.value = newAuthorId
+
+        _isFilteringActive.value =
+            newAuthorId != null ||
+                    _selectedAnimals.value.isNotEmpty() ||
+                    _selectedFishes.value.isNotEmpty() ||
+                    _selectedLocationType.value != null ||
+                    _selectedMaxDistance.value != null ||
+                    _selectedLastSeenPeriod.value != null
+
+        applyFilters()
     }
 
     //za odabir lov/ribolov
@@ -268,8 +280,8 @@ class LocationViewModel(
 
     private fun distanceBetween(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
         val results = FloatArray(1)
-        android.location.Location.distanceBetween(lat1, lon1, lat2, lon2, results)
-        return results[0] / 1000.0
+        android.location.Location.distanceBetween(lat1, lon1, lat2, lon2, results) //racuna krivu na zem kugli
+        return results[0] / 1000.0//results je u metrima - vracamo km
     }
 
     private fun loadAllLocations() {
@@ -281,19 +293,45 @@ class LocationViewModel(
                 }
         }
     }
+    private fun loadAllSightings() {
+        viewModelScope.launch {
+            sightingRepository.getSightingsFlow()
+                .collect { sightingsList ->
+                    val mapped = sightingsList
+                        .groupBy { it.locationId }
+                        .mapValues { (_, sightingsAtLocation) ->
+                            sightingsAtLocation.associate {
+                                it.speciesId to it.lastSeen
+                            }
+                        }
+                    _allSightings.value = mapped
+                    applyFilters()
+                }
+        }
+    }
+    private val _selectedLastSeenPeriod = MutableStateFlow<Long?>(null)
+    val selectedLastSeenPeriod: StateFlow<Long?> = _selectedLastSeenPeriod.asStateFlow()
+
+    fun setLastSeenPeriod(periodMs: Long?) {
+        _selectedLastSeenPeriod.value = periodMs
+        _isFilteringActive.value = true
+        applyFilters()
+    }
 
     fun applyFilters(
-        authorId: String? = currentAuthorId,
         searchQuery: String = currentSearchQuery
     ) {
         currentSearchQuery = searchQuery
-        currentAuthorId = authorId
+        val authorId = _selectedAuthorId.value
         val type = _selectedLocationType.value
         val selectedAnimalsIds = _selectedAnimals.value.map { it.id }
         val selectedFishIds = _selectedFishes.value.map { it.id }
+        val now = System.currentTimeMillis()
+        val lastSeenPeriod = _selectedLastSeenPeriod.value
+
 
         val filtered = _locations.value.values.filter { location ->
-            val matchesAuthor = currentAuthorId == null || location.authorId == currentAuthorId
+            val matchesAuthor = authorId == null || location.authorId == authorId
             val matchesType = when (type) {
                 null -> true
                 else -> location.type == type
@@ -312,6 +350,30 @@ class LocationViewModel(
                     selectedFishIds.any { id -> location.fishIds.contains(id) }
             }
 
+            val sightingsForLocation = _allSightings.value[location.id] ?: emptyMap()
+            // - ako je selektovana neka vrsta mora neka od njih da bude vidjena u tom periodu a ako nisu onda bilo koja
+            val matchesLastSeen = if (lastSeenPeriod == null) {
+                true
+            } else {
+                val cutoff = now - lastSeenPeriod
+                Log.d("LASTSEEN_DEBUG", "now=$now, cutoff=$cutoff, period=$lastSeenPeriod")
+
+                if (selectedAnimalsIds.isEmpty() && selectedFishIds.isEmpty()) {
+                    val sightingValues = sightingsForLocation.values.toList()
+                    Log.d("LASTSEEN_DEBUG", "Location ${location.name}: sightings=$sightingValues")
+                    sightingsForLocation.values.any { lastSeen -> lastSeen >= cutoff }
+                } else {
+                    // postoje selektovane vrste i samo se one proveravaju
+                    val relevantIds = selectedAnimalsIds + selectedFishIds
+                    relevantIds.any { id ->
+                        val lastSeen = sightingsForLocation[id] ?: 0L
+                        Log.d("LASTSEEN_DEBUG", "Location ${location.name}, speciesId=$id, lastSeen=$lastSeen, cutoff=$cutoff, passes=${lastSeen >= cutoff}")
+                        lastSeen >= cutoff
+                    }
+                }
+            }
+
+
             val userLoc = _userLocation.value
             val maxDist = _selectedMaxDistance.value
 
@@ -322,28 +384,6 @@ class LocationViewModel(
                 )
                 dist <= maxDist
             } else true
-            //deo za last seen: 📅
-            val lastSeenPeriod = _selectedLastSeenPeriod.value
-            val now = System.currentTimeMillis()
-
-            val matchesLastSeen = if (lastSeenPeriod != null &&
-                (selectedAnimalsIds.isNotEmpty() || selectedFishIds.isNotEmpty())) {
-
-                val sightingsForLocation = _allSightings.value[location.id] ?: emptyMap()
-                val targetIds = selectedAnimalsIds + selectedFishIds
-
-                // Da li je IJEDNA od selektovanih životiinja/riba viđena u periodu
-                targetIds.any { id ->
-                    val lastSeen = sightingsForLocation[id]
-                    lastSeen != null && (now - lastSeen) <= lastSeenPeriod
-                }
-            } else if (lastSeenPeriod != null) {
-                // Nijedna životinja nije selektovana — traži lokacije gde je BILO KOJA viđena u periodu
-                val sightingsForLocation = _allSightings.value[location.id] ?: emptyMap()
-                sightingsForLocation.values.any { lastSeen ->
-                    (now - lastSeen) <= lastSeenPeriod
-                }
-            } else true //📅
 
             matchesAuthor && matchesType && matchesSearch && matchesAnimalsOrFish && matchesDistance && matchesLastSeen
         }
@@ -353,6 +393,7 @@ class LocationViewModel(
         {
             _isFilteringActive.value = true
         }
+
         Log.d("APPLY_FILTERS", "Final Result: ${filtered.size} locations found.")
         Log.d("FILTER_DEBUG", "TYPE = $type")
         Log.d("FILTER_DEBUG", "ALL LOCATIONS = ${_locations.value.values.map { it.type }}")
@@ -361,26 +402,21 @@ class LocationViewModel(
         _selectedAnimals.value = emptyList()
         _selectedFishes.value = emptyList()
         _selectedLocationType.value = null
+        _selectedAuthorId.value = null
         currentSearchQuery = ""
         _selectedMaxDistance.value = null
-        _selectedLastSeenPeriod.value = null
         _isFilteringActive.value = false
+        _selectedLastSeenPeriod.value = null
         applyFilters() // vratice sve lokacije na mapu nakon sto obrise filtere
     }
-    //----------------------------------ovo sve brisem 🚮-------------------------------------------------------------------------------------------------------
+
+
+    //----------------------------------ovo sve brisem -------------------------------------------------------------------------------------------------------
     fun clearError() {
         _error.value = null
     }
-    // 📌
     private var locationUpdateActive = false
     lateinit var locationCallback: LocationCallback
-
-    /*
-    private val _isManuallyControlling = MutableStateFlow(false)
-    val isManuallyControlling: StateFlow<Boolean> = _isManuallyControlling.asStateFlow()
-    fun setManualControl(isManual: Boolean) {
-        _isManuallyControlling.value = isManual
-    }*/
     fun setupLocationUpdates(
         fusedLocationProvider: FusedLocationProviderClient,
         context: Context
@@ -434,6 +470,8 @@ class LocationViewModel(
             locationRepository.createLocation(location)
                 .onSuccess { createdLocation ->
                     _locations.value = _locations.value + (createdLocation.id to createdLocation)
+                    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+                    userRepository.addPoints(currentUserId, 5)
                     applyFilters()
                     Toast.makeText(context, "Location successfully added", Toast.LENGTH_SHORT).show()
                     Log.d("LocationViewModel", "Successfully created location: ${createdLocation.id}")
@@ -466,7 +504,6 @@ class LocationViewModel(
             _isLoading.value = false
         }
     }
-
    /* fun deleteLocation(locationId: String) {
         viewModelScope.launch {
             _isLoading.value = true
@@ -500,7 +537,6 @@ class LocationViewModel(
                     ).show()
                     return@launch
                 }
-
 
                 val updatedLocations = _locations.value.mapValues { (id, location) ->
                     if (id == locationId) {

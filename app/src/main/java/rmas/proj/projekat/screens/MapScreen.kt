@@ -43,10 +43,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
 import com.google.firebase.auth.FirebaseAuth
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.Icon
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import androidx.compose.foundation.background
@@ -57,29 +53,32 @@ import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationResult
 import androidx.compose.foundation.layout.Row
 import androidx.navigation.NavController
-import androidx.compose.material.icons.filled.People
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Pets
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Water
 import rmas.proj.projekat.utils.LocationDetailsDialog
 import rmas.proj.projekat.viewmodel.LocationViewModel
 import rmas.proj.projekat.utils.getCurrentLocation
 import rmas.proj.projekat.utils.uploadLocationImage
-import rmas.proj.projekat.utils.mockUserLocation
 import rmas.proj.projekat.utils.setupLocationUpdates
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Surface
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 @SuppressLint("MissingPermission")
 @Composable
 fun MapScreen(
-    navController: NavController,//valjda mi ne treba
+    navController: NavController,//obrisi
     viewModel: LocationViewModel
 ) {
     val context = LocalContext.current
     val fusedLocationProvider = remember { LocationServices.getFusedLocationProviderClient(context) }
     var userLocation by remember { mutableStateOf<LatLng?>(null) }
     var permissionGranted by remember { mutableStateOf(false) }
-    var showAddLocationDialog by remember { mutableStateOf(false) } // State za dijaloge
+    var showAddLocationDialog by remember { mutableStateOf(false) }
+    var showLocationsTable by remember { mutableStateOf(false) }  //🍊
     var selectedLocation by remember { mutableStateOf<Location?>(null) }
     val filteredLocations by viewModel.filteredLocations.collectAsState()
     val isFilteringActive by viewModel.isFilteringActive.collectAsState()
@@ -109,15 +108,10 @@ fun MapScreen(
         )
     }
     //-----------------------------------------------------------------------------
-    //POKRETNI MARKER
     var characterPosition = viewModel.characterPosition
-    //val characterPosition by viewModel.characterPosition.collectAsState() // ako ne radi zameni donju liniiju sa ovom 🐛👈 Mora biti collectAsState()
     val characterMarkerState = remember { mutableStateOf(MarkerState(position = userLocation ?: LatLng(0.0, 0.0))) }
-    var showMain by remember { mutableStateOf(false) }
-    var isNavigationRailVisible by remember { mutableStateOf(false) }
-
-    //📌  //da li ovo da opbrisem 🚮
-    //val isManuallyControlling by viewModel.isManuallyControlling.collectAsState()
+    //var showMain by remember { mutableStateOf(false) }
+    //var isNavigationRailVisible by remember { mutableStateOf(false) }
 
     // Remember location callback
     val locationCallback = remember {
@@ -126,21 +120,11 @@ fun MapScreen(
                 locationResult.lastLocation?.let { location ->
                     val latLng = LatLng(location.latitude, location.longitude)
                     userLocation = latLng
-
-                    viewModel.setUserLocation(latLng)  //🛤️
-
-                    // updateuje se pozicija ako nije ukljuceno manuallycontrolling
-                    // //da li ovo da opbrisem
-                    /*
-                    if (!isManuallyControlling) {
-                        viewModel.updatePosition(latLng)
-                        characterMarkerState.value = MarkerState(position = latLng)
-                    }*/
+                    viewModel.setUserLocation(latLng)
                 }
             }
         }
-    }//kraj📌
-
+    }
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
         onResult = { granted ->
@@ -148,22 +132,21 @@ fun MapScreen(
             if (granted) {
                 getCurrentLocation(fusedLocationProvider) { location ->
                     userLocation = location
-                    viewModel.setUserLocation(location)//🛤️
-                    //pokretni marker init:
+                    viewModel.setUserLocation(location)
                     viewModel.initializeCharacterPosition(location)
                     characterMarkerState.value = MarkerState(position = location)
-                    setupLocationUpdates(fusedLocationProvider, locationCallback)// Start location updates📌
+                    setupLocationUpdates(fusedLocationProvider, locationCallback)
                 }
             }
         }
     )
-    //📌
-    // Cleanup location updates when leaving the screen - 🐛 KAKO SE OVO PONASA KAD SE KORISTI MANUAL - DA LI RESETUJE POZICIJU - NE TREBA VALJDA TO DA RADI?
+
+    // Cleanup kad se izlazi iz ekrana
     DisposableEffect(Unit) {
         onDispose {
             fusedLocationProvider.removeLocationUpdates(locationCallback)
         }
-    }//📌
+    }
 
     // Provera da li je dozvola odobrena
     LaunchedEffect(Unit) {
@@ -177,10 +160,9 @@ fun MapScreen(
             permissionGranted = true
             getCurrentLocation(fusedLocationProvider) { location ->
                 userLocation = location
-                // init pokretni marker
                 viewModel.initializeCharacterPosition(location)
                 characterMarkerState.value = MarkerState(position = location)
-                setupLocationUpdates(fusedLocationProvider, locationCallback) // Start location updates📌
+                setupLocationUpdates(fusedLocationProvider, locationCallback)
             }
         } else {
             locationPermissionLauncher.launch(permission)
@@ -233,7 +215,6 @@ fun MapScreen(
                                 )
                             }
                         }
-                        //pokretni marker
                         characterPosition?.let { position ->
                             Marker(
                                 state = characterMarkerState.value,
@@ -243,112 +224,48 @@ fun MapScreen(
                         }
                     }
 
-                    // btn za dodavanje nove lokacije
-                    FloatingActionButton(
-                        onClick = { showAddLocationDialog = true },
+                    Column(
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
-                            .padding(16.dp)
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Icon(Icons.Default.Add, contentDescription = "Dodaj lokaciju")
-                    }
-
-                    //pokretni marker strelice za pomeranje
-                    //ovo brisem 🚮
-                    /*
-                    characterPosition?.let { position ->
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(bottom = 0.dp),//80
-                            contentAlignment = Alignment.BottomCenter
+                        // btn za otvaranje tabele lokacija
+                        FloatingActionButton(
+                            onClick = { showLocationsTable = true },
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer
                         ) {
-                            Card(
-                                modifier = Modifier.padding(16.dp)
-                            ) {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    modifier = Modifier.padding(8.dp)
-                                )
-                                {
-                                    // Toggle button for manual control//📌
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier.padding(bottom = 8.dp)
-                                    ) {
-                                        Text("Ručno upravljanje: ")
-                                        Switch(
-                                            checked = isManuallyControlling,
-                                            onCheckedChange = { viewModel.setManualControl(it) }
-                                        )
-                                    }
-                                    // Only show arrow controls when manual control is enabled
-                                    if (isManuallyControlling) {
-                                        IconButton(
-                                            onClick = {
-                                                val newPosition = LatLng(position.latitude + 0.0001, position.longitude)//mogu da povecam da se vise pomera 🐛
-                                                viewModel.updatePosition(newPosition)
-                                                characterMarkerState.value = MarkerState(position = newPosition)
-                                                // Mock the user location
-                                                mockUserLocation(context, newPosition)
-                                            }
-                                        ) {
-                                            Icon(Icons.Default.KeyboardArrowUp, "Gore")
-                                        }
-
-                                        Row {
-                                            IconButton(
-                                                onClick = {
-                                                    val newPosition = LatLng(position.latitude, position.longitude - 0.0001)
-                                                    viewModel.updatePosition(newPosition)
-                                                    characterMarkerState.value = MarkerState(position = newPosition)
-                                                    // Mock the user location
-                                                    mockUserLocation(context, newPosition)
-                                                }
-                                            ) {
-                                                Icon(Icons.Default.KeyboardArrowLeft, "Levo")
-                                            }
-
-                                            Spacer(modifier = Modifier.width(24.dp))
-
-                                            IconButton(
-                                                onClick = {
-                                                    val newPosition = LatLng(position.latitude, position.longitude + 0.0001)
-                                                    viewModel.updatePosition(newPosition)
-                                                    characterMarkerState.value = MarkerState(position = newPosition)
-                                                    // Mock the user location
-                                                    mockUserLocation(context, newPosition)
-                                                }
-                                            ) {
-                                                Icon(Icons.Default.KeyboardArrowRight, "Desno")
-                                            }
-                                        }
-
-                                        IconButton(
-                                            onClick = {
-                                                val newPosition = LatLng(position.latitude - 0.0001, position.longitude)
-                                                viewModel.updatePosition(newPosition)
-                                                characterMarkerState.value = MarkerState(position = newPosition)
-                                                // Mock the user location
-                                                mockUserLocation(context, newPosition)
-                                            }
-                                        ) {
-                                            Icon(Icons.Default.KeyboardArrowDown, "Dole")
-                                        }
-                                    } //kraj📌
-                                }
-                            }
+                            Icon(
+                                imageVector = Icons.Default.List,
+                                contentDescription = "Prikaži tabelu lokacija"
+                            )
+                        }
+                        // btn za dodavanje nove lokacije
+                        FloatingActionButton(
+                            onClick = { showAddLocationDialog = true }
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = "Dodaj lokaciju")
                         }
                     }
-
-
-                    */
-
-
 
                 }
             }
 
+    if (showLocationsTable) {
+        Dialog(onDismissRequest = { showLocationsTable = false }) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.7f),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                LocationsTableSheet(
+                    locations = locationsToShow,
+                    userLocation = userLocation
+                )
+            }
+        }
+    }
     // Dijalozi
     if (showAddLocationDialog) {
         AddLocationDialog(
@@ -365,7 +282,7 @@ fun MapScreen(
     selectedLocation?.let { location ->
         LocationDetailsDialog(
             location = location,
-            currentUserId = "current_user_id",//🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛ne treba ovako?ako ne radi ovako probaj da iznad locationsdialog dodas ovo val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: "guest" i onda umesto ove linije ovo:  currentUserId = currentUserId,
+            currentUserId = "current_user_id",//obrisi ovo
             context = context,
             onDismiss = { selectedLocation = null },
             onRatingAdded = { rating : Rating->
@@ -515,7 +432,7 @@ fun AddLocationDialog(
 }
 
 @Composable
-fun LocationTypeSelector(//filter za tip lokacije 🐛
+fun LocationTypeSelector(
     selectedType: LocationType,
     onTypeSelected: (LocationType) -> Unit
 ) {
@@ -550,4 +467,132 @@ fun LocationTypeSelector(//filter za tip lokacije 🐛
     }
 }
 
+//prikaz lokacija u tabeli:
+@Composable
+fun LocationsTableSheet(
+    locations: List<Location>,
+    userLocation: LatLng?
+) {
+    fun distanceKm(loc: Location): Double? {
+        userLocation ?: return null
+        val results = FloatArray(1)
+        android.location.Location.distanceBetween(
+            userLocation.latitude, userLocation.longitude,
+            loc.position.latitude, loc.position.longitude,
+            results
+        )
+        return results[0] / 1000.0
+    }
 
+    val sorted = remember(locations, userLocation) {
+        locations.sortedBy { distanceKm(it) ?: Double.MAX_VALUE }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 32.dp)
+    ) {
+        Text(
+            text = "Lokacije u okolini",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+
+        // zaglavlje tabele
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .padding(horizontal = 8.dp, vertical = 6.dp)
+        ) {
+            Text(
+                text = "Naziv",
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.weight(2f)
+            )
+            Text(
+                text = "Tip",
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.weight(1f),
+                textAlign = TextAlign.Center
+            )
+            Text(
+                text = "Udaljenost",
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.weight(1f),
+                textAlign = TextAlign.End
+            )
+        }
+
+        HorizontalDivider()
+
+        // redovi tabele
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 400.dp)
+        ) {
+            itemsIndexed(sorted) { index, location ->
+                val distance = distanceKm(location)
+                val distanceText = when {
+                    distance == null -> "—"
+                    distance < 1.0 -> "${(distance * 1000).toInt()} m"
+                    else -> "${"%.1f".format(distance)} km"
+                }
+                val typeLabel = when (location.type) {
+                    LocationType.HUNTING -> "Lov"
+                    LocationType.FISHING -> "Ribolov"
+                }
+                val typeColor = when (location.type) {
+                    LocationType.HUNTING -> MaterialTheme.colorScheme.tertiary
+                    LocationType.FISHING -> MaterialTheme.colorScheme.primary
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            if (index % 2 == 0) MaterialTheme.colorScheme.surface
+                            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                        )
+                        .padding(horizontal = 8.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = location.name,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.weight(2f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Box(
+                        modifier = Modifier.weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = typeColor.copy(alpha = 0.15f)
+                        ) {
+                            Text(
+                                text = typeLabel,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = typeColor,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                    Text(
+                        text = distanceText,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.weight(1f),
+                        textAlign = TextAlign.End,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                HorizontalDivider(thickness = 0.5.dp)
+            }
+        }
+    }
+}

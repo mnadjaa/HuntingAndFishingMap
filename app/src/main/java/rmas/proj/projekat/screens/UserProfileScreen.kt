@@ -79,7 +79,6 @@ fun UserProfileScreen(
                         .fillMaxSize()
                         .padding(16.dp)
                 ) {
-                    // Profile Header
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -91,7 +90,7 @@ fun UserProfileScreen(
                         Column(
                             modifier = Modifier.padding(16.dp)
                         ) {
-                            // Profile Picture
+                            // slika
                             if (currentUser.profilePicture.isNotEmpty()) {
                                 AsyncImage(
                                     model = currentUser.profilePicture,
@@ -111,7 +110,7 @@ fun UserProfileScreen(
                                 )
                             }
 
-                            // User Name
+                            // username
                             Text(
                                 text = "${currentUser.firstName} ${currentUser.lastName}",
                                 style = MaterialTheme.typography.headlineMedium,

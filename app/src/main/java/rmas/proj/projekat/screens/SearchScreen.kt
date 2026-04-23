@@ -7,6 +7,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Forest
+import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material.icons.filled.Water
 import androidx.compose.material3.*
@@ -30,14 +31,15 @@ fun SearchScreen(
     locationViewModel: LocationViewModel
 )
 {
+    val selectedAuthorId by locationViewModel.selectedAuthorId.collectAsState()
     val selectedAnimals by locationViewModel.selectedAnimals.collectAsState()
     val selectedFishes by locationViewModel.selectedFishes.collectAsState()
     val selectedType by locationViewModel.selectedLocationType.collectAsState()
     val selectedMaxDistance by locationViewModel.selectedMaxDistance.collectAsState()
     val selectedPeriod by locationViewModel.selectedLastSeenPeriod.collectAsState()
-    val distanceOptions = listOf(5.0, 10.0, 25.0, 50.0, 100.0)
+    val distanceOptions = listOf(5.0, 10.0, 25.0, 50.0, 100.0)//km
     val periodOptions = listOf(
-        "Danas" to (24 * 60 * 60 * 1000L),
+        "Danas" to (24 * 60 * 60 * 1000L), //key value par, u ms
         "Ova nedelja" to (7 * 24 * 60 * 60 * 1000L),
         "Ovaj mesec" to (30L * 24 * 60 * 60 * 1000L),
         "Ova godina" to (365L * 24 * 60 * 60 * 1000L)
@@ -47,6 +49,7 @@ fun SearchScreen(
             || selectedPeriod != null
             || selectedAnimals.isNotEmpty()
             || selectedFishes.isNotEmpty()
+            || selectedAuthorId != null
 
     Column(
         modifier = Modifier
@@ -104,7 +107,6 @@ fun SearchScreen(
                 }
             )
         }
-        //deo za filtriranje po udaljenosti:
         Spacer(modifier = Modifier.height(24.dp))
 
         Button(
@@ -129,6 +131,21 @@ fun SearchScreen(
             Icon(Icons.Default.Water, contentDescription = null)
             Spacer(Modifier.width(8.dp))
             Text("Ribe")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = {
+                navController.navigate("authors") { // ruta ka listi autora
+                    launchSingleTop = true
+                }
+            },
+        ) {
+            Icon(Icons.Default.People, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text("Autori")
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -219,3 +236,4 @@ fun SearchScreen(
         }
     }
 }
+

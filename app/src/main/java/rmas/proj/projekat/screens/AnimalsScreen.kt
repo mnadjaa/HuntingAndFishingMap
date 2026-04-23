@@ -4,7 +4,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import rmas.proj.projekat.data.Animal
 import androidx.navigation.NavController
 import rmas.proj.projekat.data.SpeciesType
 import rmas.proj.projekat.viewmodel.LocationViewModel
@@ -14,7 +13,7 @@ import rmas.proj.projekat.viewmodel.SpeciesViewModel
 fun AnimalsScreen(
     speciesViewModel: SpeciesViewModel,
     locationViewModel: LocationViewModel,
-    navController: NavController
+    navController: NavController//necu da koristim vise obrisi!
 ) {
     val animalsData by speciesViewModel.animalsData.collectAsState()
     val isLoading by speciesViewModel.isLoading.collectAsState()

@@ -22,7 +22,6 @@ fun FishesScreen(
     val selectedFishes by locationViewModel.selectedFishes.collectAsState()
     val selectedIds = selectedFishes.map { it.id }.toSet()
 
-    // Ucitava ribe
     LaunchedEffect(Unit) {
         speciesViewModel.loadAllSpecies(SpeciesType.FISH)
     }

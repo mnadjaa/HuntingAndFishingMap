@@ -47,12 +47,11 @@ fun LoginScreen(
     val scope = rememberCoroutineScope()//za asinhrone operacije - zbog firebase poziva
 
     val userViewModel: UserViewModel = viewModel()
-    val userState by userViewModel.usersData.collectAsState() // Prati promene u korisničkim podacima
     val usersData by userViewModel.usersData.collectAsState()
 
     // Prati podatke trenutno prijavljenog korisnika
-    val currentUserId = auth.currentUser?.uid
-    val currentUser = currentUserId?.let { usersData[it] }
+    //val currentUserId = auth.currentUser?.uid
+    //val currentUser = currentUserId?.let { usersData[it] }
 
     Column(
         modifier = Modifier

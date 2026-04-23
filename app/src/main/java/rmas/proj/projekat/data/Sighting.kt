@@ -2,7 +2,10 @@ package rmas.proj.projekat.data
 
 import com.google.firebase.firestore.DocumentId
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 
 data class Sighting(
     @DocumentId var id: String = "",
@@ -67,4 +70,24 @@ class SightingRepository{
             Result.failure(e)
         }
     }
+
+    fun getSightingsFlow(): Flow<List<Sighting>> = callbackFlow {
+        val db = FirebaseFirestore.getInstance()
+
+        val listener = db.collection("species_sightings")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+                if (snapshot != null) {
+                    val sightings = snapshot.documents
+                        .mapNotNull { it.toObject(Sighting::class.java) }
+                    trySend(sightings)
+                }
+            }
+
+        awaitClose { listener.remove() }
+    }
 }
+

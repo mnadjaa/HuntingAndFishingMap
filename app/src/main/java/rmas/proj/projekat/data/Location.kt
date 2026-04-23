@@ -9,7 +9,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 import rmas.proj.projekat.data.Species
 data class Location(
-    @DocumentId var id: String = "",          // Ovaj ID je automatski dodeljen od strane Firestore-a
+    @DocumentId var id: String = "",
     val name: String="",
     val description: String="",
     val type: LocationType=LocationType.HUNTING,//ako hocu both promeni da bude set
@@ -147,7 +147,7 @@ class LocationRepository {
         }
         val data = document.data ?: throw IllegalStateException("Location data is null")
 
-        // Extract position data
+        // position
         val positionMap = data["position"] as? Map<*, *>
             ?: throw IllegalStateException("Position data is missing")
         val position = LatLng(
@@ -155,7 +155,7 @@ class LocationRepository {
             positionMap["longitude"] as Double
         )
 
-        // Extract ratings
+        // ratings
         val ratingsData = data["ratings"] as? List<*>
         val ratings = ratingsData?.mapNotNull { ratingData ->
             (ratingData as? Map<*, *>)?.let { rating ->

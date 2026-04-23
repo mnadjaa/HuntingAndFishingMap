@@ -20,7 +20,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-// Funkcija za dobijanje trenutne lokacije
+// funkcija za dobijanje trenutne lokacije
 @SuppressLint("MissingPermission")
 fun getCurrentLocation(
     fusedLocationProvider: FusedLocationProviderClient,
@@ -61,7 +61,6 @@ suspend fun uploadLocationImage(context: Context, imageUri: Uri): String {//🐛
     }
 }
 
-//🐛ovo VALJDA IMAM IDENTICNO U DATEFOMRAT - AKO DA ONDA OBRISI OVU A AKO NIJE ISTA DODAJ OVU U POSEBNU KLASU ILI U TU DATEFORMAT NEKOJ OVDE DA STOJI
 fun formatTimestamp(timestamp: Long): String {
     val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
     return dateFormat.format(Date(timestamp))
@@ -83,10 +82,6 @@ fun setupLocationUpdates(
         Looper.getMainLooper()
     )
 }
-
-//🐛 PROMENI OPIS DA BUDE NA SPRSKOM:
-// Function to mock user location (requires Location Edit app or another mock location app)
-// Function to mock user location using Loca Edit app
 fun mockUserLocation(context: Context, position: LatLng) {
     try {
         // Create intent to communicate with Loca Edit
@@ -95,13 +90,8 @@ fun mockUserLocation(context: Context, position: LatLng) {
         intent.putExtra("longitude", position.longitude)
         intent.putExtra("accuracy", 3.0f) // Accuracy in meters
 
-        // Try to send the intent
         context.sendBroadcast(intent)
-        /*Toast.makeText(
-            context,
-            "Lokacija postavljena na: ${position.latitude}, ${position.longitude}",
-            Toast.LENGTH_SHORT
-        ).show()*/
+
     } catch (e: Exception) {
         Log.e("MockLocation", "Error sending location to Loca Edit: ${e.message}")
         Toast.makeText(

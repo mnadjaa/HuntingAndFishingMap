@@ -96,9 +96,9 @@ dependencies {
     implementation("com.google.android.gms:play-services-location:21.2.0")
     implementation("androidx.navigation:navigation-compose:2.7.5")
 
-    implementation ("androidx.work:work-runtime-ktx:2.8.1")//🐕‍🦺🐕‍🦺🐕‍🦺🐕‍🦺🐕‍🦺🐕‍🦺🐕‍🦺🐕‍🦺
-    implementation("com.google.firebase:firebase-messaging-ktx:23.4.1") //🐕‍🦺🐕‍🦺🐕‍🦺🐕‍🦺🐕‍🦺🐕‍🦺🐕‍🦺🐕‍🦺🐕‍🦺
-    implementation("com.google.firebase:firebase-analytics-ktx:21.2.0")//🐕‍🦺🐕‍🦺🐕‍🦺🐕‍🦺🐕‍🦺🐕‍🦺🐕‍🦺🐕‍🦺🐕‍🦺
+    implementation ("androidx.work:work-runtime-ktx:2.8.1")
+    implementation("com.google.firebase:firebase-messaging-ktx:23.4.1")
+    implementation("com.google.firebase:firebase-analytics-ktx:21.2.0")
 
 
 

@@ -42,60 +42,19 @@ class UserViewModel(
         }
     }
 
-    fun createUser(user: User) {
+
+    private val _allUsers = MutableStateFlow<List<User>>(emptyList())
+    val allUsers: StateFlow<List<User>> = _allUsers.asStateFlow()
+
+    fun loadAllUsers() {
         viewModelScope.launch {
-            _isLoading.value = true
-            _error.value = null
-
-            userRepository.createUser(user)
-                .onSuccess { createdUser ->
-                    _usersData.value = _usersData.value + (createdUser.id to createdUser)
-                    Log.d("UserViewModel", "Uspešno kreiran korisnik: ${createdUser.id}")
+            userRepository.getAllUsers()
+                .onSuccess { users ->
+                    _allUsers.value = users.sortedByDescending { it.points }
                 }
-                .onFailure { exception ->
-                    _error.value = "Greška pri kreiranju korisnika: ${exception.message}"
-                    Log.e("UserViewModel", "Greška pri kreiranju korisnika", exception)
+                .onFailure {
+                    Log.e("UserViewModel", "Greška pri učitavanju korisnika", it)
                 }
-
-            _isLoading.value = false
-        }
-    }
-
-    fun updateUser(user: User) {
-        viewModelScope.launch {
-            _isLoading.value = true
-            _error.value = null
-
-            userRepository.updateUser(user)
-                .onSuccess { updatedUser ->
-                    _usersData.value = _usersData.value + (updatedUser.id to updatedUser)
-                    Log.d("UserViewModel", "Uspešno ažuriran korisnik: ${updatedUser.id}")
-                }
-                .onFailure { exception ->
-                    _error.value = "Greška pri ažuriranju korisnika: ${exception.message}"
-                    Log.e("UserViewModel", "Greška pri ažuriranju korisnika", exception)
-                }
-
-            _isLoading.value = false
-        }
-    }
-
-    fun deleteUser(userId: String) {
-        viewModelScope.launch {
-            _isLoading.value = true
-            _error.value = null
-
-            userRepository.deleteUser(userId)
-                .onSuccess {
-                    _usersData.value = _usersData.value - userId
-                    Log.d("UserViewModel", "Uspešno obrisan korisnik: $userId")
-                }
-                .onFailure { exception ->
-                    _error.value = "Greška pri brisanju korisnika: ${exception.message}"
-                    Log.e("UserViewModel", "Greška pri brisanju korisnika", exception)
-                }
-
-            _isLoading.value = false
         }
     }
 
@@ -103,3 +62,4 @@ class UserViewModel(
         _error.value = null
     }
 }
+

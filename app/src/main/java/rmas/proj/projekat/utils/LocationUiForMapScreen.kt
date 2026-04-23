@@ -56,6 +56,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import rmas.proj.projekat.data.Location
 import rmas.proj.projekat.data.LocationType
 import rmas.proj.projekat.data.Rating
@@ -111,7 +112,7 @@ fun LocationDetailsDialog( //prikazuje sve informacije o selektovanoj lokaciji
             viewModel.updateSelectedImage(it)
         }
     }
-    // Preload user data for ratings
+    // ucitavaju se podaci o korisnicima
     LaunchedEffect(location.ratings) {
         location.ratings.forEach { existingRating ->
             if (!userViewModel.usersData.value.containsKey(existingRating.userId)) {
@@ -423,13 +424,34 @@ fun LocationDetailsDialog( //prikazuje sve informacije o selektovanoj lokaciji
                                 score = rating,
                                 comment = comment
                             )
-                            if (existingRating != null) {
+                            if (existingRating != null) { //ne dodaju se poeni ako se samo menja ocena
                                 onRatingUpdated(location.id, newRating)
-                            } else {
+                                onDismiss()
+                            } else { //dodaju se poeni za novu ocenu
                                 onRatingAdded(newRating)
+                                scope.launch {
+                                    try {
+                                        val userId = FirebaseAuth.getInstance().currentUser?.uid
+                                        if (userId == null) {
+                                            Log.e("POINTS_DEBUG", "Korisnik nije ulogovan")
+                                            return@launch
+                                        }
+                                        Log.d("POINTS_DEBUG", "Stvarni userId: $userId")
+                                        val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                                        db.collection("users")
+                                            .document(userId)
+                                            .update("points", com.google.firebase.firestore.FieldValue.increment(3))
+                                            .await()
+                                        Log.d("POINTS_DEBUG", "Poeni uspesno dodati")
+                                    } catch (e: Exception) {
+                                        Log.e("POINTS_DEBUG", "Greska: ${e.message}")
+                                    }finally {
+                                        onDismiss() // zatvaramo dijalog tek kad je Firestore završio
+                                    }
+                                }
                             }
-                            onDismiss()
                         },
+
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 8.dp),
