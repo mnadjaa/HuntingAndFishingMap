@@ -447,8 +447,8 @@ class LocationViewModel(
             override fun onLocationResult(locationResult: LocationResult) {
                 locationResult.lastLocation?.let { location ->
                     val latLng = LatLng(location.latitude, location.longitude)
-                    characterPosition = latLng
-                    _characterPosition.value = latLng
+                    //characterPosition = latLng
+                    //_characterPosition.value = latLng
                 }
             }
         }

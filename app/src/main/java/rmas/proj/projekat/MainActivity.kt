@@ -119,7 +119,7 @@
             }
         }
 
-        if (!isLoggedIn) { // ako nije ulogovan, prikazi login/register bez navbara
+        if (!isLoggedIn) { //  ako nije ulogovan, prikazi login/register bez navbara
             NavHost(
                 navController = navController,
                 startDestination = startDestination

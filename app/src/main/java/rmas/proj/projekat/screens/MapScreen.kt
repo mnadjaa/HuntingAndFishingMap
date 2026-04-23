@@ -57,7 +57,7 @@ import rmas.proj.projekat.utils.LocationDetailsDialog
 import rmas.proj.projekat.viewmodel.LocationViewModel
 import rmas.proj.projekat.utils.getCurrentLocation
 import rmas.proj.projekat.utils.uploadLocationImage
-import rmas.proj.projekat.utils.setupLocationUpdates
+//import rmas.proj.projekat.utils.setupLocationUpdates
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -78,7 +78,7 @@ fun MapScreen(
     var userLocation by remember { mutableStateOf<LatLng?>(null) }
     var permissionGranted by remember { mutableStateOf(false) }
     var showAddLocationDialog by remember { mutableStateOf(false) }
-    var showLocationsTable by remember { mutableStateOf(false) }  //🍊
+    var showLocationsTable by remember { mutableStateOf(false) }
     var selectedLocation by remember { mutableStateOf<Location?>(null) }
     val filteredLocations by viewModel.filteredLocations.collectAsState()
     val isFilteringActive by viewModel.isFilteringActive.collectAsState()
@@ -135,10 +135,20 @@ fun MapScreen(
                     viewModel.setUserLocation(location)
                     viewModel.initializeCharacterPosition(location)
                     characterMarkerState.value = MarkerState(position = location)
-                    setupLocationUpdates(fusedLocationProvider, locationCallback)
+                    //setupLocationUpdates(fusedLocationProvider, locationCallback)
                 }
             }
         }
+    )
+
+    fusedLocationProvider.requestLocationUpdates(
+        com.google.android.gms.location.LocationRequest.create().apply {
+            interval = 5000
+            fastestInterval = 2000
+            priority = com.google.android.gms.location.LocationRequest.PRIORITY_HIGH_ACCURACY
+        },
+        locationCallback,
+        android.os.Looper.getMainLooper()
     )
 
     // Cleanup kad se izlazi iz ekrana
@@ -162,7 +172,7 @@ fun MapScreen(
                 userLocation = location
                 viewModel.initializeCharacterPosition(location)
                 characterMarkerState.value = MarkerState(position = location)
-                setupLocationUpdates(fusedLocationProvider, locationCallback)
+                //setupLocationUpdates(fusedLocationProvider, locationCallback)
             }
         } else {
             locationPermissionLauncher.launch(permission)
@@ -282,7 +292,7 @@ fun MapScreen(
     selectedLocation?.let { location ->
         LocationDetailsDialog(
             location = location,
-            currentUserId = "current_user_id",//obrisi ovo
+            currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: "",
             context = context,
             onDismiss = { selectedLocation = null },
             onRatingAdded = { rating : Rating->
